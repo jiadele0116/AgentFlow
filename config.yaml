@@ -1,0 +1,48 @@
+system:
+  name: "Multi-Agent System"
+  version: "0.1.0"
+  log_level: INFO
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+  api_key: ${ANTHROPIC_API_KEY}
+  temperature: 0.7
+  max_tokens: 4096
+  timeout: 60
+
+embedding:
+  model: BAAI/bge-m3
+  device: cpu
+  batch_size: 32
+
+vector_store:
+  backend: chroma
+  persist_dir: ./data/chroma
+  collection: default
+
+rag:
+  chunk_size: 512
+  chunk_overlap: 64
+  retrieval_top_k: 5
+  rerank: true
+  rerank_model: BAAI/bge-reranker-v2-m3
+
+agents:
+  max_concurrent: 5
+  default_strategy: react
+  memory:
+    short_term_max: 20
+    long_term_backend: sqlite
+
+mcp:
+  servers:
+    - name: filesystem
+      enabled: true
+      root_dir: ./data/workspace
+    - name: database
+      enabled: false
+      connection_string: ${DB_URL}
+    - name: web
+      enabled: true
+      allowed_domains: ["*"]
