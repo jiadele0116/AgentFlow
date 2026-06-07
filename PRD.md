@@ -2,7 +2,8 @@
 
 ## 1. 项目概述
 
-构建一个基于 Python 的多 Agent 协作系统，集成 MCP（Model Context Protocol）、工具调用（Tools）、技能编排（Skills）和检索增强生成（RAG）四大核心模块。系统支持多个 Agent 并行或串行协作，通过统一的协议层调度工具与技能，结合 RAG 实现知识增强决策。
+构建一个基于 Python 的多 Agent 协作系统，集成 MCP（Model Context Protocol）、工具调用（Tools）、技能编排（Skills）和检索增强生成（RAG）四大核心模块。
+系统支持多个 Agent 并行或串行协作，通过统一的协议层调度工具与技能，结合 RAG 实现知识增强决策。
 
 ---
 

@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multi-agent-system
+    ports:
+      - "8880:8880"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 持久化向量数据库和工作目录
+      - chroma_data:/app/data/chroma
+      - workspace_data:/app/data/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8880/health'); assert r.status_code==200"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  chroma_data:
+    driver: local
+  workspace_data:
+    driver: local

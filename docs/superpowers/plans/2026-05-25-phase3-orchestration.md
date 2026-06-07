@@ -1,24 +1,24 @@
-# Phase 3: Orchestration Implementation Plan
+# 第三阶段：编排层实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **致智能体工作者：** 必须使用子技能：superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实施本计划。步骤使用复选框（`- [ ]`）语法进行追踪。
 
-**Goal:** Build the Agents (base, 5 types, memory, strategies, message bus), MCP (protocol, client, servers), and Skills (engine, loader, YAML definitions) modules — the orchestration layer that ties everything together.
+**目标：** 构建 Agents（基类、5 种类型、记忆、策略、消息总线）、MCP（协议、客户端、服务器）和 Skills（引擎、加载器、YAML 定义）模块——将所有内容连接在一起的编排层。
 
-**Architecture:** Agents are autonomous units that communicate via the EventBus. Each agent has a role, strategy, and memory. MCP provides a standardized protocol for tool/resource access. Skills compose Tools + LLM into higher-level capabilities.
+**架构：** Agent 是通过 EventBus 通信的自治单元。每个 Agent 有角色、策略和记忆。MCP 提供标准化的工具/资源访问协议。Skills 将 Tools + LLM 组合为更高层的能力。
 
-**Tech Stack:** Python 3.11+, PyYAML, Jinja2, aiosqlite, Core/LLM/Tools/RAG from Phases 1-2
+**技术栈：** Python 3.11+、PyYAML、Jinja2、aiosqlite、第一二阶段的 Core/LLM/Tools/RAG
 
 ---
 
-## File Structure
+## 文件结构
 
 ```
 src/agents/
 ├── __init__.py
-├── base.py              # BaseAgent ABC, Task, Result, AgentState
-├── memory.py            # Short-term (list) + Long-term (SQLite) memory
-├── strategy.py          # ReAct, PlanExecute, CoT strategies
-├── message_bus.py       # AgentMessageBus wrapping Core EventBus
+├── base.py              # BaseAgent ABC、Task、Result、AgentState
+├── memory.py            # 短期（列表）+ 长期（SQLite）记忆
+├── strategy.py          # ReAct、PlanExecute、CoT 策略
+├── message_bus.py       # 封装 Core EventBus 的 AgentMessageBus
 ├── planner.py           # PlannerAgent
 ├── executor.py          # ExecutorAgent
 ├── critic.py            # CriticAgent
@@ -27,8 +27,8 @@ src/agents/
 
 src/mcp/
 ├── __init__.py
-├── protocol.py          # MCPRequest, MCPResponse, MCPError
-├── server.py            # MCPServer ABC + decorators
+├── protocol.py          # MCPRequest、MCPResponse、MCPError
+├── server.py            # MCPServer ABC + 装饰器
 ├── client.py            # MCPClient
 └── servers/
     ├── __init__.py
@@ -38,7 +38,7 @@ src/mcp/
 src/skills/
 ├── __init__.py
 ├── engine.py            # SkillEngine
-├── loader.py            # YAML skill loader
+├── loader.py            # YAML 技能加载器
 └── definitions/
     ├── code_review.yaml
     └── data_analysis.yaml
@@ -62,15 +62,15 @@ tests/
 
 ---
 
-## Task 1: Agent Memory
+## 任务 1：智能体记忆
 
-**Files:**
-- Create: `src/agents/__init__.py`
-- Create: `src/agents/memory.py`
-- Create: `tests/test_agents/__init__.py`
-- Create: `tests/test_agents/test_memory.py`
+**文件：**
+- 创建：`src/agents/__init__.py`
+- 创建：`src/agents/memory.py`
+- 创建：`tests/test_agents/__init__.py`
+- 创建：`tests/test_agents/test_memory.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_agents/test_memory.py
@@ -100,7 +100,7 @@ async def test_short_term_memory_eviction():
 
     messages = mem.get_all()
     assert len(messages) == 3
-    assert messages[0]["content"] == "msg 2"  # oldest evicted
+    assert messages[0]["content"] == "msg 2"  # 最旧的被驱逐
 
 
 @pytest.mark.asyncio
@@ -146,12 +146,12 @@ async def test_long_term_memory_agent_isolation(tmp_path):
     assert not any("agent 2" in r["value"] for r in results_1)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_agents/test_memory.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_agents/test_memory.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement memory**
+- [ ] **步骤 3：实现记忆模块**
 
 ```python
 # src/agents/__init__.py
@@ -165,21 +165,21 @@ from typing import Any
 
 
 class ShortTermMemory:
-    """In-memory message buffer with max turns limit."""
+    """带最大轮数限制的内存消息缓冲区。"""
 
     def __init__(self, max_turns: int = 20):
         self._messages: deque[dict[str, Any]] = deque(maxlen=max_turns)
 
     def add(self, message: dict[str, Any]):
-        """Add a message to short-term memory."""
+        """向短期记忆添加消息。"""
         self._messages.append(message)
 
     def get_all(self) -> list[dict[str, Any]]:
-        """Get all messages in memory."""
+        """获取记忆中的所有消息。"""
         return list(self._messages)
 
     def clear(self):
-        """Clear all messages."""
+        """清除所有消息。"""
         self._messages.clear()
 
     @property
@@ -188,7 +188,7 @@ class ShortTermMemory:
 
 
 class LongTermMemory:
-    """SQLite-backed persistent memory with per-agent isolation."""
+    """基于 SQLite 的持久化记忆，按智能体隔离。"""
 
     def __init__(self, db_path: str = ":memory:"):
         self._db_path = db_path
@@ -213,7 +213,7 @@ class LongTermMemory:
             await self._db.commit()
 
     async def store(self, agent_id: str, key: str, value: str):
-        """Store a memory entry for an agent."""
+        """为智能体存储记忆条目。"""
         await self._ensure_db()
         await self._db.execute(
             "INSERT INTO memories (agent_id, key, value) VALUES (?, ?, ?)",
@@ -222,7 +222,7 @@ class LongTermMemory:
         await self._db.commit()
 
     async def retrieve(self, agent_id: str, query: str, limit: int = 10) -> list[dict[str, Any]]:
-        """Retrieve memories matching a query for a specific agent."""
+        """为特定智能体检索匹配查询的记忆。"""
         await self._ensure_db()
         cursor = await self._db.execute(
             "SELECT key, value, created_at FROM memories WHERE agent_id = ? AND value LIKE ? ORDER BY created_at DESC LIMIT ?",
@@ -232,18 +232,18 @@ class LongTermMemory:
         return [{"key": r[0], "value": r[1], "created_at": r[2]} for r in rows]
 
     async def close(self):
-        """Close the database connection."""
+        """关闭数据库连接。"""
         if self._db:
             await self._db.close()
             self._db = None
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_agents/test_memory.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_agents/test_memory.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/agents/__init__.py src/agents/memory.py tests/test_agents/__init__.py tests/test_agents/test_memory.py
@@ -252,13 +252,13 @@ git commit -m "feat: agent memory — ShortTermMemory (deque) + LongTermMemory (
 
 ---
 
-## Task 2: Agent Strategies
+## 任务 2：智能体策略
 
-**Files:**
-- Create: `src/agents/strategy.py`
-- Create: `tests/test_agents/test_strategy.py`
+**文件：**
+- 创建：`src/agents/strategy.py`
+- 创建：`tests/test_agents/test_strategy.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_agents/test_strategy.py
@@ -269,19 +269,19 @@ from src.llm.provider import LLMResponse, TokenUsage
 
 @pytest.mark.asyncio
 async def test_react_strategy_single_step():
-    """ReAct strategy executes thought-action-observation loop."""
+    """ReAct 策略执行思考-行动-观察循环。"""
     from src.agents.strategy import ReActStrategy
 
     mock_llm = MagicMock()
     mock_llm.complete = AsyncMock(side_effect=[
-        # Thought + Action
+        # 思考 + 行动
         LLMResponse(
             content="I need to read the file.",
             tool_calls=[MagicMock(id="c1", name="read_file", arguments={"path": "/tmp/test.txt"})],
             usage=TokenUsage(input_tokens=10, output_tokens=20),
             model="test",
         ),
-        # Final answer after observation
+        # 观察后的最终回答
         LLMResponse(
             content="The file contains hello world.",
             tool_calls=None,
@@ -306,7 +306,7 @@ async def test_react_strategy_single_step():
 
 @pytest.mark.asyncio
 async def test_react_strategy_max_iterations():
-    """ReAct strategy stops at max iterations."""
+    """ReAct 策略在最大迭代次数时停止。"""
     from src.agents.strategy import ReActStrategy
 
     mock_llm = MagicMock()
@@ -324,13 +324,13 @@ async def test_react_strategy_max_iterations():
     strategy = ReActStrategy(llm=mock_llm, tool_engine=mock_tool_engine, max_iterations=2)
     result = await strategy.execute(task_description="Complex task", context=[])
 
-    # Should stop after 2 iterations
+    # 应在 2 次迭代后停止
     assert mock_llm.complete.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_cot_strategy():
-    """CoT strategy does chain-of-thought without tools."""
+    """CoT 策略进行无工具的思维链推理。"""
     from src.agents.strategy import CoTStrategy
 
     mock_llm = MagicMock()
@@ -348,12 +348,12 @@ async def test_cot_strategy():
     mock_llm.complete.assert_called_once()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_agents/test_strategy.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_agents/test_strategy.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement strategies**
+- [ ] **步骤 3：实现策略**
 
 ```python
 # src/agents/strategy.py
@@ -372,7 +372,7 @@ class StrategyResult:
 
 
 class ExecutionStrategy(ABC):
-    """Base class for agent execution strategies."""
+    """智能体执行策略的基类。"""
 
     @abstractmethod
     async def execute(
@@ -384,7 +384,7 @@ class ExecutionStrategy(ABC):
 
 
 class ReActStrategy(ExecutionStrategy):
-    """Thought → Action → Observation loop."""
+    """思考 → 行动 → 观察循环。"""
 
     def __init__(
         self,
@@ -410,7 +410,7 @@ class ReActStrategy(ExecutionStrategy):
         for iteration in range(self._max_iterations):
             response = await self._llm.complete(messages=messages, tools=tools if tools else None)
 
-            # If no tool calls, we have the final answer
+            # 如果没有工具调用，则得到最终答案
             if not response.tool_calls:
                 return StrategyResult(
                     content=response.content,
@@ -418,7 +418,7 @@ class ReActStrategy(ExecutionStrategy):
                     iterations=iteration + 1,
                 )
 
-            # Execute tool calls
+            # 执行工具调用
             messages.append({"role": "assistant", "content": response.content or ""})
 
             for tool_call in response.tool_calls:
@@ -430,7 +430,7 @@ class ReActStrategy(ExecutionStrategy):
                     "content": f"Tool result for {tool_call.name}: {result.data if result.success else result.error}",
                 })
 
-        # Max iterations reached
+        # 达到最大迭代次数
         return StrategyResult(
             content=response.content if response else "Max iterations reached",
             tool_calls_made=tool_calls_made,
@@ -439,7 +439,7 @@ class ReActStrategy(ExecutionStrategy):
 
 
 class CoTStrategy(ExecutionStrategy):
-    """Chain-of-thought reasoning without tools."""
+    """无工具的思维链推理。"""
 
     def __init__(self, llm: LLMProvider):
         self._llm = llm
@@ -465,7 +465,7 @@ class CoTStrategy(ExecutionStrategy):
 
 
 class PlanExecuteStrategy(ExecutionStrategy):
-    """Plan first, then execute step by step."""
+    """先规划，再逐步执行。"""
 
     def __init__(self, llm: LLMProvider, tool_engine: Any, max_iterations: int = 10):
         self._llm = llm
@@ -479,7 +479,7 @@ class PlanExecuteStrategy(ExecutionStrategy):
     ) -> StrategyResult:
         tools = self._tool_engine.list_tools()
 
-        # Step 1: Generate plan
+        # 步骤 1：生成计划
         plan_messages = list(context)
         plan_messages.append({
             "role": "user",
@@ -496,7 +496,7 @@ class PlanExecuteStrategy(ExecutionStrategy):
             if line.strip() and line.strip()[0].isdigit()
         ]
 
-        # Step 2: Execute each step
+        # 步骤 2：执行每个步骤
         results = []
         tool_calls_made = 0
 
@@ -524,12 +524,12 @@ class PlanExecuteStrategy(ExecutionStrategy):
         )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_agents/test_strategy.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_agents/test_strategy.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/agents/strategy.py tests/test_agents/test_strategy.py
@@ -538,13 +538,13 @@ git commit -m "feat: agent strategies — ReAct, CoT, PlanExecute"
 
 ---
 
-## Task 3: Agent Message Bus
+## 任务 3：智能体消息总线
 
-**Files:**
-- Create: `src/agents/message_bus.py`
-- Create: `tests/test_agents/test_message_bus.py`
+**文件：**
+- 创建：`src/agents/message_bus.py`
+- 创建：`tests/test_agents/test_message_bus.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_agents/test_message_bus.py
@@ -626,12 +626,12 @@ async def test_agent_message_bus_unregister():
     assert len(received) == 0
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_agents/test_message_bus.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_agents/test_message_bus.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement message bus**
+- [ ] **步骤 3：实现消息总线**
 
 ```python
 # src/agents/message_bus.py
@@ -644,28 +644,28 @@ from src.core.events import EventBus, Message, MessageType
 
 
 class AgentMessageBus:
-    """Agent-specific message bus wrapping Core EventBus."""
+    """封装 Core EventBus 的智能体专属消息总线。"""
 
     def __init__(self):
         self._event_bus = EventBus()
         self._agents: dict[str, Callable] = {}
 
     def register_agent(self, agent_id: str, handler: Callable[[Message], Awaitable[None]]):
-        """Register an agent to receive messages."""
+        """注册智能体以接收消息。"""
         self._agents[agent_id] = handler
         self._event_bus.subscribe(agent_id, handler)
 
     def unregister_agent(self, agent_id: str):
-        """Unregister an agent."""
+        """注销智能体。"""
         self._agents.pop(agent_id, None)
         self._event_bus.unsubscribe(agent_id)
 
     async def start(self):
-        """Start the message bus."""
+        """启动消息总线。"""
         await self._event_bus.start()
 
     async def stop(self):
-        """Stop the message bus."""
+        """停止消息总线。"""
         await self._event_bus.stop()
 
     async def send(
@@ -676,7 +676,7 @@ class AgentMessageBus:
         payload: dict[str, Any],
         correlation_id: str | None = None,
     ):
-        """Send a point-to-point message."""
+        """发送点对点消息。"""
         message = Message(
             sender=sender,
             receiver=receiver,
@@ -693,7 +693,7 @@ class AgentMessageBus:
         msg_type: str,
         payload: dict[str, Any],
     ):
-        """Broadcast a message to all agents."""
+        """向所有智能体广播消息。"""
         message = Message(
             sender=sender,
             receiver="broadcast",
@@ -705,12 +705,12 @@ class AgentMessageBus:
         await self._event_bus.publish(message)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_agents/test_message_bus.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_agents/test_message_bus.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/agents/message_bus.py tests/test_agents/test_message_bus.py
@@ -719,14 +719,14 @@ git commit -m "feat: AgentMessageBus wrapping Core EventBus with agent-specific 
 
 ---
 
-## Task 4: Base Agent + PlannerAgent
+## 任务 4：基础 Agent + PlannerAgent
 
-**Files:**
-- Create: `src/agents/base.py`
-- Create: `src/agents/planner.py`
-- Create: `tests/test_agents/test_planner.py`
+**文件：**
+- 创建：`src/agents/base.py`
+- 创建：`src/agents/planner.py`
+- 创建：`tests/test_agents/test_planner.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_agents/test_planner.py
@@ -737,7 +737,7 @@ from src.llm.provider import LLMResponse, TokenUsage
 
 @pytest.mark.asyncio
 async def test_planner_agent_decomposes_task():
-    """PlannerAgent decomposes a task into subtasks."""
+    """PlannerAgent 将任务分解为子任务。"""
     from src.agents.planner import PlannerAgent
     from src.agents.memory import ShortTermMemory
 
@@ -763,7 +763,7 @@ async def test_planner_agent_decomposes_task():
 
 @pytest.mark.asyncio
 async def test_planner_agent_state_transitions():
-    """PlannerAgent transitions through states correctly."""
+    """PlannerAgent 正确地进行状态转换。"""
     from src.agents.planner import PlannerAgent
     from src.agents.base import AgentState
     from src.agents.memory import ShortTermMemory
@@ -787,12 +787,12 @@ async def test_planner_agent_state_transitions():
     assert agent.state == AgentState.COMPLETED
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_agents/test_planner.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_agents/test_planner.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement base agent and planner**
+- [ ] **步骤 3：实现基础 Agent 和 Planner**
 
 ```python
 # src/agents/base.py
@@ -840,7 +840,7 @@ class PlannerResult:
 
 
 class BaseAgent(ABC):
-    """Base class for all agents."""
+    """所有智能体的基类。"""
 
     def __init__(
         self,
@@ -858,12 +858,12 @@ class BaseAgent(ABC):
         self.state = AgentState.IDLE
 
     def transition(self, new_state: AgentState):
-        """Transition to a new state."""
+        """转换到新状态。"""
         self.state = new_state
 
     @abstractmethod
     async def run(self, **kwargs) -> Any:
-        """Execute the agent's primary task."""
+        """执行智能体的主要任务。"""
         ...
 ```
 
@@ -877,7 +877,7 @@ from src.llm.provider import LLMProvider
 
 
 class PlannerAgent(BaseAgent):
-    """Receives user tasks, decomposes into subtasks."""
+    """接收用户任务，分解为子任务。"""
 
     def __init__(
         self,
@@ -889,7 +889,7 @@ class PlannerAgent(BaseAgent):
         self._llm = llm
 
     async def run(self, task_description: str, **kwargs) -> PlannerResult:
-        """Decompose a task into subtasks using LLM."""
+        """使用 LLM 将任务分解为子任务。"""
         self.transition(AgentState.PLANNING)
         self.memory.add({"role": "user", "content": task_description})
 
@@ -906,7 +906,7 @@ class PlannerAgent(BaseAgent):
 
         response = await self._llm.complete(messages=messages)
 
-        # Parse subtasks from numbered lines
+        # 从编号行解析子任务
         subtasks = [
             line.strip()
             for line in response.content.split("\n")
@@ -923,12 +923,12 @@ class PlannerAgent(BaseAgent):
         )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_agents/test_planner.py -v`
-Expected: All 2 tests PASS
+运行：`pytest tests/test_agents/test_planner.py -v`
+预期：全部 2 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/agents/base.py src/agents/planner.py tests/test_agents/test_planner.py
@@ -937,13 +937,13 @@ git commit -m "feat: BaseAgent with state machine and PlannerAgent with LLM deco
 
 ---
 
-## Task 5: ExecutorAgent + CriticAgent
+## 任务 5：ExecutorAgent + CriticAgent
 
-**Files:**
-- Create: `src/agents/executor.py`
-- Create: `src/agents/critic.py`
+**文件：**
+- 创建：`src/agents/executor.py`
+- 创建：`src/agents/critic.py`
 
-- [ ] **Step 1: Write implementation**
+- [ ] **步骤 1：编写实现**
 
 ```python
 # src/agents/executor.py
@@ -955,7 +955,7 @@ from src.agents.strategy import ExecutionStrategy
 
 
 class ExecutorAgent(BaseAgent):
-    """Executes subtasks by calling Tools/Skills via a strategy."""
+    """通过调用 Tools/Skills 执行子任务。"""
 
     def __init__(
         self,
@@ -967,7 +967,7 @@ class ExecutorAgent(BaseAgent):
         self._strategy = strategy
 
     async def run(self, task_description: str, context: list[dict] | None = None, **kwargs) -> Result:
-        """Execute a task using the configured strategy."""
+        """使用配置的策略执行任务。"""
         self.transition(AgentState.EXECUTING)
         self.memory.add({"role": "user", "content": task_description})
 
@@ -996,7 +996,7 @@ from src.llm.provider import LLMProvider
 
 
 class CriticAgent(BaseAgent):
-    """Reviews executor output and provides feedback."""
+    """审查执行器输出并提供反馈。"""
 
     def __init__(
         self,
@@ -1008,7 +1008,7 @@ class CriticAgent(BaseAgent):
         self._llm = llm
 
     async def run(self, content_to_review: str, original_task: str = "", **kwargs) -> dict[str, Any]:
-        """Review content and provide feedback."""
+        """审查内容并提供反馈。"""
         self.transition(AgentState.REVIEWING)
 
         messages = [
@@ -1040,7 +1040,7 @@ class CriticAgent(BaseAgent):
         }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步骤 2：提交**
 
 ```bash
 git add src/agents/executor.py src/agents/critic.py
@@ -1049,13 +1049,13 @@ git commit -m "feat: ExecutorAgent (strategy-based) and CriticAgent (LLM review)
 
 ---
 
-## Task 6: RetrieverAgent + CoordinatorAgent
+## 任务 6：RetrieverAgent + CoordinatorAgent
 
-**Files:**
-- Create: `src/agents/retriever.py`
-- Create: `src/agents/coordinator.py`
+**文件：**
+- 创建：`src/agents/retriever.py`
+- 创建：`src/agents/coordinator.py`
 
-- [ ] **Step 1: Write implementation**
+- [ ] **步骤 1：编写实现**
 
 ```python
 # src/agents/retriever.py
@@ -1066,7 +1066,7 @@ from src.agents.memory import ShortTermMemory
 
 
 class RetrieverAgent(BaseAgent):
-    """Runs RAG retrieval and provides knowledge context."""
+    """执行 RAG 检索，提供知识上下文。"""
 
     def __init__(
         self,
@@ -1078,7 +1078,7 @@ class RetrieverAgent(BaseAgent):
         self._retrieval = retrieval_pipeline
 
     async def run(self, query: str, top_k: int = 5, **kwargs) -> list[dict[str, Any]]:
-        """Retrieve relevant knowledge for a query."""
+        """为查询检索相关知识。"""
         self.transition(AgentState.EXECUTING)
 
         results = await self._retrieval.retrieve(query, top_k=top_k)
@@ -1105,7 +1105,7 @@ from src.agents.message_bus import AgentMessageBus
 
 
 class CoordinatorAgent(BaseAgent):
-    """Manages inter-agent communication and task coordination."""
+    """管理智能体间通信和任务协调。"""
 
     def __init__(
         self,
@@ -1118,7 +1118,7 @@ class CoordinatorAgent(BaseAgent):
         self._task_status: dict[str, str] = {}
 
     async def run(self, tasks: list[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        """Coordinate execution of multiple tasks across agents."""
+        """协调多个任务在智能体间的执行。"""
         self.transition(AgentState.EXECUTING)
 
         results = {}
@@ -1144,13 +1144,13 @@ class CoordinatorAgent(BaseAgent):
         return {"tasks_dispatched": len(results), "status": results}
 
     async def handle_result(self, message: Any):
-        """Handle result messages from executor agents."""
+        """处理来自执行器智能体的结果消息。"""
         task_id = message.payload.get("task_id", message.correlation_id)
         self._task_status[task_id] = "completed"
         self.memory.add({"role": "system", "content": f"Task {task_id} completed"})
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步骤 2：提交**
 
 ```bash
 git add src/agents/retriever.py src/agents/coordinator.py
@@ -1159,15 +1159,15 @@ git commit -m "feat: RetrieverAgent (RAG) and CoordinatorAgent (task dispatch)"
 
 ---
 
-## Task 7: MCP Protocol
+## 任务 7：MCP 协议
 
-**Files:**
-- Create: `src/mcp/__init__.py`
-- Create: `src/mcp/protocol.py`
-- Create: `tests/test_mcp/__init__.py`
-- Create: `tests/test_mcp/test_protocol.py`
+**文件：**
+- 创建：`src/mcp/__init__.py`
+- 创建：`src/mcp/protocol.py`
+- 创建：`tests/test_mcp/__init__.py`
+- 创建：`tests/test_mcp/test_protocol.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_mcp/test_protocol.py
@@ -1218,12 +1218,12 @@ def test_mcp_error_creation():
     assert err.data == {"method": "foo"}
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_mcp/test_protocol.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_mcp/test_protocol.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement protocol**
+- [ ] **步骤 3：实现协议**
 
 ```python
 # src/mcp/__init__.py
@@ -1256,12 +1256,12 @@ class MCPResponse:
     error: MCPError | None = None
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_mcp/test_protocol.py -v`
-Expected: All 4 tests PASS
+运行：`pytest tests/test_mcp/test_protocol.py -v`
+预期：全部 4 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/mcp/__init__.py src/mcp/protocol.py tests/test_mcp/__init__.py tests/test_mcp/test_protocol.py
@@ -1270,13 +1270,13 @@ git commit -m "feat: MCP protocol — MCPRequest, MCPResponse, MCPError dataclas
 
 ---
 
-## Task 8: MCP Server + Decorators
+## 任务 8：MCP 服务器 + 装饰器
 
-**Files:**
-- Create: `src/mcp/server.py`
-- Create: `tests/test_mcp/test_server.py`
+**文件：**
+- 创建：`src/mcp/server.py`
+- 创建：`tests/test_mcp/test_server.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_mcp/test_server.py
@@ -1343,12 +1343,12 @@ async def test_mcp_server_unknown_method():
     assert resp.error.code == -32601
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_mcp/test_server.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_mcp/test_server.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement server**
+- [ ] **步骤 3：实现服务器**
 
 ```python
 # src/mcp/server.py
@@ -1360,7 +1360,7 @@ from src.mcp.protocol import MCPRequest, MCPResponse, MCPError
 
 
 def tool(description: str = "", parameters: dict | None = None):
-    """Decorator to mark a method as an MCP tool."""
+    """将方法标记为 MCP 工具的装饰器。"""
     def decorator(func):
         func._mcp_tool = True
         func._mcp_tool_description = description
@@ -1370,7 +1370,7 @@ def tool(description: str = "", parameters: dict | None = None):
 
 
 def resource(uri_scheme: str = ""):
-    """Decorator to mark a method as an MCP resource."""
+    """将方法标记为 MCP 资源的装饰器。"""
     def decorator(func):
         func._mcp_resource = True
         func._mcp_uri_scheme = uri_scheme
@@ -1379,7 +1379,7 @@ def resource(uri_scheme: str = ""):
 
 
 def _infer_parameters(func: Callable) -> dict[str, Any]:
-    """Infer JSON Schema parameters from function signature."""
+    """从函数签名推断 JSON Schema 参数。"""
     sig = inspect.signature(func)
     properties = {}
     required = []
@@ -1413,7 +1413,7 @@ def _infer_parameters(func: Callable) -> dict[str, Any]:
 
 
 def mcp_server(name: str, version: str = "1.0"):
-    """Class decorator to create an MCP server."""
+    """创建 MCP 服务器的类装饰器。"""
     def decorator(cls):
         original_init = cls.__init__
 
@@ -1490,12 +1490,12 @@ def mcp_server(name: str, version: str = "1.0"):
     return decorator
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_mcp/test_server.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_mcp/test_server.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/mcp/server.py tests/test_mcp/test_server.py
@@ -1504,15 +1504,15 @@ git commit -m "feat: MCP server with @tool/@resource decorators and request hand
 
 ---
 
-## Task 9: MCP Built-in Servers + Client
+## 任务 9：MCP 内置服务器 + 客户端
 
-**Files:**
-- Create: `src/mcp/servers/__init__.py`
-- Create: `src/mcp/servers/filesystem.py`
-- Create: `src/mcp/servers/web.py`
-- Create: `src/mcp/client.py`
+**文件：**
+- 创建：`src/mcp/servers/__init__.py`
+- 创建：`src/mcp/servers/filesystem.py`
+- 创建：`src/mcp/servers/web.py`
+- 创建：`src/mcp/client.py`
 
-- [ ] **Step 1: Write implementation**
+- [ ] **步骤 1：编写实现**
 
 ```python
 # src/mcp/servers/__init__.py
@@ -1528,7 +1528,7 @@ from src.mcp.server import mcp_server, tool, resource
 
 @mcp_server(name="filesystem", version="1.0")
 class FileSystemServer:
-    """MCP server for file system operations."""
+    """文件系统操作的 MCP 服务器。"""
 
     def __init__(self, root_dir: str = "."):
         self._root = Path(root_dir)
@@ -1586,7 +1586,7 @@ from src.mcp.server import mcp_server, tool, resource
 
 @mcp_server(name="web", version="1.0")
 class WebServer:
-    """MCP server for web operations."""
+    """Web 操作的 MCP 服务器。"""
 
     def __init__(self, allowed_domains: list[str] | None = None):
         self._allowed = allowed_domains
@@ -1607,7 +1607,7 @@ class WebServer:
 
     @tool(description="Search the web (stub)")
     async def search_web(self, query: str) -> list[dict]:
-        # Stub — real implementation would use a search API
+        # 存根——真实实现会使用搜索 API
         return [{"title": f"Result for: {query}", "url": "https://example.com"}]
 
     @resource(uri_scheme="https")
@@ -1626,17 +1626,17 @@ from src.mcp.server import MCPServer
 
 
 class MCPClient:
-    """Client for communicating with MCP servers."""
+    """用于与 MCP 服务器通信的客户端。"""
 
     def __init__(self):
         self._servers: dict[str, Any] = {}
 
     def register_server(self, name: str, server: Any):
-        """Register an MCP server."""
+        """注册 MCP 服务器。"""
         self._servers[name] = server
 
     async def call_tool(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> Any:
-        """Call a tool on a specific server."""
+        """在指定服务器上调用工具。"""
         server = self._servers.get(server_name)
         if not server:
             raise ValueError(f"Server not found: {server_name}")
@@ -1655,7 +1655,7 @@ class MCPClient:
         return response.result.get("content") if response.result else None
 
     async def list_tools(self, server_name: str) -> list[dict]:
-        """List tools available on a server."""
+        """列出服务器上可用的工具。"""
         server = self._servers.get(server_name)
         if not server:
             raise ValueError(f"Server not found: {server_name}")
@@ -1669,7 +1669,7 @@ class MCPClient:
         return response.result.get("tools", []) if response.result else []
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步骤 2：提交**
 
 ```bash
 git add src/mcp/servers/__init__.py src/mcp/servers/filesystem.py src/mcp/servers/web.py src/mcp/client.py
@@ -1678,17 +1678,17 @@ git commit -m "feat: MCP built-in servers (filesystem, web) and MCPClient"
 
 ---
 
-## Task 10: Skills Engine + Loader
+## 任务 10：技能引擎 + 加载器
 
-**Files:**
-- Create: `src/skills/__init__.py`
-- Create: `src/skills/engine.py`
-- Create: `src/skills/loader.py`
-- Create: `tests/test_skills/__init__.py`
-- Create: `tests/test_skills/test_engine.py`
-- Create: `tests/test_skills/test_loader.py`
+**文件：**
+- 创建：`src/skills/__init__.py`
+- 创建：`src/skills/engine.py`
+- 创建：`src/skills/loader.py`
+- 创建：`tests/test_skills/__init__.py`
+- 创建：`tests/test_skills/test_engine.py`
+- 创建：`tests/test_skills/test_loader.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_skills/test_engine.py
@@ -1699,7 +1699,7 @@ from src.llm.provider import LLMResponse, TokenUsage
 
 @pytest.mark.asyncio
 async def test_skill_engine_tool_call_step():
-    """SkillEngine executes tool_call steps."""
+    """SkillEngine 执行 tool_call 步骤。"""
     from src.skills.engine import SkillEngine, SkillContext
 
     mock_tool_engine = MagicMock()
@@ -1729,7 +1729,7 @@ async def test_skill_engine_tool_call_step():
 
 @pytest.mark.asyncio
 async def test_skill_engine_llm_reasoning_step():
-    """SkillEngine executes llm_reasoning steps."""
+    """SkillEngine 执行 llm_reasoning 步骤。"""
     from src.skills.engine import SkillEngine
 
     mock_tool_engine = MagicMock()
@@ -1817,12 +1817,12 @@ def test_loader_missing_skill(tmp_path):
         loader.load("nonexistent")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_skills/ -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_skills/ -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement engine and loader**
+- [ ] **步骤 3：实现引擎和加载器**
 
 ```python
 # src/skills/__init__.py
@@ -1837,7 +1837,7 @@ from src.llm.provider import LLMProvider
 
 
 class SkillContext:
-    """Key-value context for skill execution."""
+    """技能执行的键值上下文。"""
 
     def __init__(self, input_data: dict[str, Any]):
         self._data: dict[str, Any] = {"input": input_data}
@@ -1850,7 +1850,7 @@ class SkillContext:
         return self._data.get(key)
 
     def resolve_params(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Resolve template variables in params."""
+        """解析参数中的模板变量。"""
         resolved = {}
         for key, value in params.items():
             if isinstance(value, str):
@@ -1860,7 +1860,7 @@ class SkillContext:
         return resolved
 
     def _resolve_template(self, template: str) -> str:
-        """Resolve {{ variable.path }} templates."""
+        """解析 {{ variable.path }} 模板。"""
         def replacer(match):
             path = match.group(1).strip()
             parts = path.split(".")
@@ -1876,7 +1876,7 @@ class SkillContext:
 
 
 class SkillEngine:
-    """Executes skills step by step."""
+    """逐步执行技能。"""
 
     def __init__(self, tool_engine: Any, llm: LLMProvider):
         self._tool_engine = tool_engine
@@ -1887,7 +1887,7 @@ class SkillEngine:
         skill_def: dict[str, Any],
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute a skill definition with given input."""
+        """使用给定输入执行技能定义。"""
         context = SkillContext(input_data)
 
         for step in skill_def.get("steps", []):
@@ -1924,7 +1924,7 @@ class SkillEngine:
         return context._data
 
     async def _execute_step(self, step: dict[str, Any], context: SkillContext):
-        """Execute a single step."""
+        """执行单个步骤。"""
         step_type = step["type"]
 
         if step_type == "tool_call":
@@ -1948,13 +1948,13 @@ from typing import Any
 
 
 class SkillLoader:
-    """Loads skill definitions from YAML files."""
+    """从 YAML 文件加载技能定义。"""
 
     def __init__(self, definitions_dir: str):
         self._dir = Path(definitions_dir)
 
     def load(self, name: str) -> dict[str, Any]:
-        """Load a skill definition by name."""
+        """按名称加载技能定义。"""
         file_path = self._dir / f"{name}.yaml"
         if not file_path.exists():
             raise FileNotFoundError(f"Skill definition not found: {name}")
@@ -1963,23 +1963,23 @@ class SkillLoader:
             return yaml.safe_load(f)
 
     def list_skills(self) -> list[str]:
-        """List all available skill names."""
+        """列出所有可用的技能名称。"""
         return [
             f.stem for f in self._dir.glob("*.yaml")
             if f.is_file()
         ]
 
     def load_all(self) -> dict[str, dict[str, Any]]:
-        """Load all skill definitions."""
+        """加载所有技能定义。"""
         return {name: self.load(name) for name in self.list_skills()}
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_skills/ -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_skills/ -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/skills/__init__.py src/skills/engine.py src/skills/loader.py tests/test_skills/__init__.py tests/test_skills/test_engine.py tests/test_skills/test_loader.py
@@ -1988,13 +1988,13 @@ git commit -m "feat: SkillEngine (tool_call, llm_reasoning, conditional, loop) a
 
 ---
 
-## Task 11: Skill Definitions
+## 任务 11：技能定义
 
-**Files:**
-- Create: `src/skills/definitions/code_review.yaml`
-- Create: `src/skills/definitions/data_analysis.yaml`
+**文件：**
+- 创建：`src/skills/definitions/code_review.yaml`
+- 创建：`src/skills/definitions/data_analysis.yaml`
 
-- [ ] **Step 1: Create code_review.yaml**
+- [ ] **步骤 1：创建 code_review.yaml**
 
 ```yaml
 # src/skills/definitions/code_review.yaml
@@ -2055,7 +2055,7 @@ steps:
     output: final_review
 ```
 
-- [ ] **Step 2: Create data_analysis.yaml**
+- [ ] **步骤 2：创建 data_analysis.yaml**
 
 ```yaml
 # src/skills/definitions/data_analysis.yaml
@@ -2115,7 +2115,7 @@ steps:
     output: save_result
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
 ```bash
 git add src/skills/definitions/
@@ -2124,15 +2124,15 @@ git commit -m "feat: skill definitions — code_review.yaml and data_analysis.ya
 
 ---
 
-## Verification Checklist
+## 验证清单
 
-After completing all tasks, run:
+完成所有任务后，运行：
 
 ```bash
-# All tests pass
+# 所有测试通过
 pytest tests/ -v
 
-# No import errors
+# 无导入错误
 python -c "
 from src.agents.base import BaseAgent, AgentState, Task, Result
 from src.agents.planner import PlannerAgent
@@ -2153,7 +2153,7 @@ from src.skills.loader import SkillLoader
 print('All imports OK')
 "
 
-# Full system integration
+# 完整系统集成
 python -c "
 from src.core.config import load_config
 from src.core.events import EventBus

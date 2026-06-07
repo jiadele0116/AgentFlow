@@ -1,0 +1,17 @@
+INFO multi_agent.main: Starting Multi-Agent System v0.1.0
+INFO multi_agent.llm.langchain: Created ChatOpenAI: qwen-plus
+INFO multi_agent.main: LangChain LLM: openai / qwen-plus
+INFO multi_agent.main: Registered 10 tools
+INFO multi_agent.tools.langchain: Converted 10 tools to LangChain format
+INFO multi_agent.main: Converted 10 tools to LangChain format
+INFO multi_agent.main: Memory system initialized (short-term + LLM summarization)
+INFO multi_agent.agents.multi: Multi-agent graph compiled
+INFO multi_agent.main: LangGraph multi-agent graph compiled
+INFO multi_agent.main: Web server starting at http://localhost:8880
+INFO multi_agent.main: System ready. Press Ctrl+C to exit.
+INFO:     Started server process [10492]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8880): [winerror 10048] 通常每个套接字地址(协议/网络地址/端口)只允许使用一次。
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.

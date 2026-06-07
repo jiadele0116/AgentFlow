@@ -1,35 +1,35 @@
-# Phase 1: Foundation Implementation Plan
+# 第一阶段：基础层实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **致智能体工作者：** 必须使用子技能：superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实施本计划。步骤使用复选框（`- [ ]`）语法进行追踪。
 
-**Goal:** Build the Core (config, logging, exceptions, event bus) and LLM (Anthropic provider) modules — the foundation everything else depends on.
+**目标：** 构建 Core（配置、日志、异常、事件总线）和 LLM（Anthropic 提供商）模块——所有后续模块的基础。
 
-**Architecture:** Core provides infrastructure (config, logging, events). LLM wraps the Anthropic API behind a provider interface. Both are dependency-free foundations that all later modules import from.
+**架构：** Core 提供基础设施（配置、日志、事件）。LLM 将 Anthropic API 封装在提供商接口之后。两者都是无依赖的基础模块，所有后续模块都从它们导入。
 
-**Tech Stack:** Python 3.11+, PyYAML, Pydantic, anthropic SDK, pytest, pytest-asyncio
+**技术栈：** Python 3.11+、PyYAML、Pydantic、anthropic SDK、pytest、pytest-asyncio
 
 ---
 
-## File Structure
+## 文件结构
 
 ```
 src/
 ├── __init__.py
 ├── core/
 │   ├── __init__.py
-│   ├── config.py          # YAML config loader, Settings singleton, env var expansion
-│   ├── logging.py         # Structured JSON logging with trace_id
-│   ├── exceptions.py      # Exception hierarchy
-│   └── events.py          # Async EventBus, Message dataclass, MessageType enum
+│   ├── config.py          # YAML 配置加载器、Settings 单例、环境变量展开
+│   ├── logging.py         # 带 trace_id 的结构化 JSON 日志
+│   ├── exceptions.py      # 异常层次结构
+│   └── events.py          # 异步 EventBus、Message 数据类、MessageType 枚举
 ├── llm/
 │   ├── __init__.py
-│   ├── provider.py        # LLMProvider ABC, LLMResponse/ToolCall/TokenUsage dataclasses
-│   └── anthropic.py       # Anthropic implementation with retry and tool use
-config.yaml                # System configuration
-pyproject.toml             # Project metadata and dependencies
+│   ├── provider.py        # LLMProvider ABC、LLMResponse/ToolCall/TokenUsage 数据类
+│   └── anthropic.py       # Anthropic 实现，支持重试和工具调用
+config.yaml                # 系统配置
+pyproject.toml             # 项目元数据和依赖
 tests/
 ├── __init__.py
-├── conftest.py            # Shared fixtures
+├── conftest.py            # 共享 fixtures
 ├── test_core/
 │   ├── __init__.py
 │   ├── test_config.py
@@ -43,16 +43,16 @@ tests/
 
 ---
 
-## Task 1: Project Scaffolding
+## 任务 1：项目脚手架
 
-**Files:**
-- Create: `pyproject.toml`
-- Create: `config.yaml`
-- Create: `src/__init__.py`
-- Create: `tests/__init__.py`
-- Create: `tests/conftest.py`
+**文件：**
+- 创建：`pyproject.toml`
+- 创建：`config.yaml`
+- 创建：`src/__init__.py`
+- 创建：`tests/__init__.py`
+- 创建：`tests/conftest.py`
 
-- [ ] **Step 1: Create pyproject.toml**
+- [ ] **步骤 1：创建 pyproject.toml**
 
 ```toml
 [build-system]
@@ -98,7 +98,7 @@ line-length = 100
 target-version = "py311"
 ```
 
-- [ ] **Step 2: Create config.yaml**
+- [ ] **步骤 2：创建 config.yaml**
 
 ```yaml
 system:
@@ -151,7 +151,7 @@ mcp:
       allowed_domains: ["*"]
 ```
 
-- [ ] **Step 3: Create package init files**
+- [ ] **步骤 3：创建包初始化文件**
 
 ```python
 # src/__init__.py
@@ -161,7 +161,7 @@ mcp:
 # tests/__init__.py
 ```
 
-- [ ] **Step 4: Create conftest.py**
+- [ ] **步骤 4：创建 conftest.py**
 
 ```python
 # tests/conftest.py
@@ -178,7 +178,7 @@ def event_loop():
 
 @pytest.fixture
 def sample_config(tmp_path):
-    """Create a minimal config file for testing."""
+    """创建用于测试的最小配置文件。"""
     config_content = """
 system:
   name: "Test System"
@@ -227,12 +227,12 @@ mcp:
     return config_file
 ```
 
-- [ ] **Step 5: Install dev dependencies and verify**
+- [ ] **步骤 5：安装开发依赖并验证**
 
-Run: `pip install -e ".[dev]"`
-Expected: Successfully installs package and dev dependencies
+运行：`pip install -e ".[dev]"`
+预期：成功安装包和开发依赖
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git init
@@ -242,15 +242,15 @@ git commit -m "chore: project scaffolding with pyproject.toml and config"
 
 ---
 
-## Task 2: Config Module
+## 任务 2：配置模块
 
-**Files:**
-- Create: `src/core/__init__.py`
-- Create: `src/core/config.py`
-- Create: `tests/test_core/__init__.py`
-- Create: `tests/test_core/test_config.py`
+**文件：**
+- 创建：`src/core/__init__.py`
+- 创建：`src/core/config.py`
+- 创建：`tests/test_core/__init__.py`
+- 创建：`tests/test_core/test_config.py`
 
-- [ ] **Step 1: Write failing tests for config**
+- [ ] **步骤 1：编写失败的配置测试**
 
 ```python
 # tests/test_core/test_config.py
@@ -260,7 +260,7 @@ from pathlib import Path
 
 
 def test_load_config_from_file(sample_config):
-    """Config loads YAML file and returns typed settings."""
+    """配置加载 YAML 文件并返回类型化设置。"""
     from src.core.config import load_config
 
     settings = load_config(sample_config)
@@ -271,7 +271,7 @@ def test_load_config_from_file(sample_config):
 
 
 def test_config_expands_env_vars(tmp_path):
-    """Config expands ${ENV_VAR} patterns in values."""
+    """配置展开值中的 ${ENV_VAR} 模式。"""
     os.environ["TEST_API_KEY"] = "sk-test-123"
     config_content = """
 system:
@@ -320,7 +320,7 @@ mcp:
 
 
 def test_config_singleton(sample_config):
-    """get_settings returns the same instance on repeated calls."""
+    """get_settings 在重复调用时返回同一实例。"""
     from src.core.config import load_config, get_settings, reset_settings
 
     reset_settings()
@@ -332,7 +332,7 @@ def test_config_singleton(sample_config):
 
 
 def test_config_missing_file():
-    """load_config raises FileNotFoundError for missing file."""
+    """load_config 对缺失文件抛出 FileNotFoundError。"""
     from src.core.config import load_config
 
     with pytest.raises(FileNotFoundError):
@@ -340,7 +340,7 @@ def test_config_missing_file():
 
 
 def test_config_default_values(sample_config):
-    """Config provides sensible defaults for optional fields."""
+    """配置为可选字段提供合理的默认值。"""
     from src.core.config import load_config
 
     settings = load_config(sample_config)
@@ -349,12 +349,12 @@ def test_config_default_values(sample_config):
     assert settings.agents.max_concurrent == 5
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_core/test_config.py -v`
-Expected: FAIL with "ModuleNotFoundError: No module named 'src.core.config'"
+运行：`pytest tests/test_core/test_config.py -v`
+预期：失败，提示 "ModuleNotFoundError: No module named 'src.core.config'"
 
-- [ ] **Step 3: Implement config module**
+- [ ] **步骤 3：实现配置模块**
 
 ```python
 # src/core/__init__.py
@@ -443,7 +443,7 @@ _ENV_VAR_PATTERN = re.compile(r"\$\{(\w+)\}")
 
 
 def _expand_env_vars(value: Any) -> Any:
-    """Recursively expand ${ENV_VAR} patterns in config values."""
+    """递归展开配置值中的 ${ENV_VAR} 模式。"""
     if isinstance(value, str):
         def replacer(match):
             var_name = match.group(1)
@@ -460,7 +460,7 @@ _settings: Settings | None = None
 
 
 def load_config(path: Path) -> Settings:
-    """Load configuration from YAML file with env var expansion."""
+    """从 YAML 文件加载配置并展开环境变量。"""
     global _settings
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
@@ -474,24 +474,24 @@ def load_config(path: Path) -> Settings:
 
 
 def get_settings() -> Settings:
-    """Get the current settings singleton."""
+    """获取当前设置单例。"""
     if _settings is None:
         raise RuntimeError("Config not loaded. Call load_config() first.")
     return _settings
 
 
 def reset_settings():
-    """Reset the settings singleton (for testing)."""
+    """重置设置单例（用于测试）。"""
     global _settings
     _settings = None
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_core/test_config.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_core/test_config.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/core/__init__.py src/core/config.py tests/test_core/__init__.py tests/test_core/test_config.py
@@ -500,13 +500,13 @@ git commit -m "feat: config module with YAML loading, env var expansion, Pydanti
 
 ---
 
-## Task 3: Exceptions Module
+## 任务 3：异常模块
 
-**Files:**
-- Create: `src/core/exceptions.py`
-- Create: `tests/test_core/test_exceptions.py`
+**文件：**
+- 创建：`src/core/exceptions.py`
+- 创建：`tests/test_core/test_exceptions.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_core/test_exceptions.py
@@ -568,12 +568,12 @@ def test_config_error_inherits():
     assert isinstance(err, MultiAgentError)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_core/test_exceptions.py -v`
-Expected: FAIL with "ImportError: cannot import name 'MultiAgentError'"
+运行：`pytest tests/test_core/test_exceptions.py -v`
+预期：失败，提示 "ImportError: cannot import name 'MultiAgentError'"
 
-- [ ] **Step 3: Implement exceptions**
+- [ ] **步骤 3：实现异常模块**
 
 ```python
 # src/core/exceptions.py
@@ -581,7 +581,7 @@ from typing import Any
 
 
 class MultiAgentError(Exception):
-    """Base exception for the multi-agent system."""
+    """多智能体系统的基础异常。"""
 
     def __init__(self, message: str, code: str = "", context: dict[str, Any] | None = None):
         super().__init__(message)
@@ -590,7 +590,7 @@ class MultiAgentError(Exception):
 
 
 class AgentError(MultiAgentError):
-    """Error originating from an agent."""
+    """来自智能体的错误。"""
 
     def __init__(self, message: str, agent_id: str = "", **kwargs):
         super().__init__(message, **kwargs)
@@ -598,7 +598,7 @@ class AgentError(MultiAgentError):
 
 
 class ToolError(MultiAgentError):
-    """Error originating from a tool execution."""
+    """来自工具执行的错误。"""
 
     def __init__(self, message: str, tool_name: str = "", **kwargs):
         super().__init__(message, **kwargs)
@@ -606,7 +606,7 @@ class ToolError(MultiAgentError):
 
 
 class SkillError(MultiAgentError):
-    """Error originating from a skill execution."""
+    """来自技能执行的错误。"""
 
     def __init__(self, message: str, skill_name: str = "", **kwargs):
         super().__init__(message, **kwargs)
@@ -614,11 +614,11 @@ class SkillError(MultiAgentError):
 
 
 class RAGError(MultiAgentError):
-    """Error originating from the RAG module."""
+    """来自 RAG 模块的错误。"""
 
 
 class MCPError(MultiAgentError):
-    """Error originating from the MCP module."""
+    """来自 MCP 模块的错误。"""
 
     def __init__(self, message: str, server_name: str = "", **kwargs):
         super().__init__(message, **kwargs)
@@ -626,15 +626,15 @@ class MCPError(MultiAgentError):
 
 
 class ConfigError(MultiAgentError):
-    """Error originating from configuration."""
+    """来自配置的错误。"""
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_core/test_exceptions.py -v`
-Expected: All 7 tests PASS
+运行：`pytest tests/test_core/test_exceptions.py -v`
+预期：全部 7 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/core/exceptions.py tests/test_core/test_exceptions.py
@@ -643,13 +643,13 @@ git commit -m "feat: exception hierarchy with AgentError, ToolError, SkillError,
 
 ---
 
-## Task 4: Logging Module
+## 任务 4：日志模块
 
-**Files:**
-- Create: `src/core/logging.py`
-- Create: `tests/test_core/test_logging.py`
+**文件：**
+- 创建：`src/core/logging.py`
+- 创建：`tests/test_core/test_logging.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_core/test_logging.py
@@ -685,10 +685,10 @@ def test_log_record_is_json(caplog):
     with caplog.at_level(logging.DEBUG):
         logger.info("structured message", trace_id="trace-1")
 
-    # Find the JSON log record
+    # 查找 JSON 日志记录
     for record in caplog.records:
         if record.getMessage() == "structured message":
-            # The formatter should have produced JSON
+            # 格式化器应该已生成 JSON
             assert hasattr(record, "trace_id")
             break
 
@@ -700,12 +700,12 @@ def test_get_logger_returns_named_logger():
     assert logger.name == "multi_agent.my_module"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_core/test_logging.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_core/test_logging.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement logging module**
+- [ ] **步骤 3：实现日志模块**
 
 ```python
 # src/core/logging.py
@@ -716,7 +716,7 @@ from datetime import datetime, timezone
 
 
 class StructuredFormatter(logging.Formatter):
-    """JSON formatter that includes trace_id and structured fields."""
+    """包含 trace_id 和结构化字段的 JSON 格式化器。"""
 
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
@@ -726,11 +726,11 @@ class StructuredFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # Add trace_id if present
+        # 如果存在 trace_id 则添加
         if hasattr(record, "trace_id"):
             log_entry["trace_id"] = record.trace_id
 
-        # Add any extra fields
+        # 添加其他额外字段
         for key in ("agent_id", "tool_name", "skill_name", "duration_ms"):
             if hasattr(record, key):
                 log_entry[key] = getattr(record, key)
@@ -742,7 +742,7 @@ class StructuredFormatter(logging.Formatter):
 
 
 class SimpleFormatter(logging.Formatter):
-    """Human-readable formatter with optional trace_id."""
+    """人类可读的格式化器，带可选 trace_id。"""
 
     def format(self, record: logging.LogRecord) -> str:
         trace = getattr(record, "trace_id", "")
@@ -751,11 +751,11 @@ class SimpleFormatter(logging.Formatter):
 
 
 def setup_logging(level: str = "INFO", json_format: bool = False):
-    """Configure the multi-agent logging system."""
+    """配置多智能体日志系统。"""
     logger = logging.getLogger("multi_agent")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
-    # Remove existing handlers
+    # 清除现有处理器
     logger.handlers.clear()
 
     handler = logging.StreamHandler(sys.stdout)
@@ -769,16 +769,16 @@ def setup_logging(level: str = "INFO", json_format: bool = False):
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a named logger under the multi_agent namespace."""
+    """获取 multi_agent 命名空间下的命名日志器。"""
     return logging.getLogger(f"multi_agent.{name}")
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_core/test_logging.py -v`
-Expected: All 4 tests PASS
+运行：`pytest tests/test_core/test_logging.py -v`
+预期：全部 4 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/core/logging.py tests/test_core/test_logging.py
@@ -787,13 +787,13 @@ git commit -m "feat: structured logging with trace_id support and JSON format"
 
 ---
 
-## Task 5: Event Bus Module
+## 任务 5：事件总线模块
 
-**Files:**
-- Create: `src/core/events.py`
-- Create: `tests/test_core/test_events.py`
+**文件：**
+- 创建：`src/core/events.py`
+- 创建：`tests/test_core/test_events.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_core/test_events.py
@@ -845,7 +845,7 @@ async def test_event_bus_subscribe_and_publish():
     )
     await bus.publish(msg)
 
-    # Give the bus time to dispatch
+    # 给总线分发消息的时间
     await asyncio.sleep(0.1)
     await bus.stop()
 
@@ -891,7 +891,7 @@ async def test_event_bus_broadcast():
 
 @pytest.mark.asyncio
 async def test_event_bus_no_handler():
-    """Publishing to an agent with no handler doesn't raise."""
+    """向没有处理器的智能体发布消息不会抛出异常。"""
     from src.core.events import EventBus, Message, MessageType
     import time
 
@@ -906,7 +906,7 @@ async def test_event_bus_no_handler():
         timestamp=time.time(),
         correlation_id="c3",
     )
-    # Should not raise
+    # 不应抛出异常
     await bus.publish(msg)
     await asyncio.sleep(0.05)
     await bus.stop()
@@ -944,12 +944,12 @@ async def test_event_bus_multiple_messages():
     assert [m.payload["index"] for m in received] == [0, 1, 2, 3, 4]
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_core/test_events.py -v`
-Expected: FAIL with "ImportError: cannot import name 'EventBus'"
+运行：`pytest tests/test_core/test_events.py -v`
+预期：失败，提示 "ImportError: cannot import name 'EventBus'"
 
-- [ ] **Step 3: Implement event bus**
+- [ ] **步骤 3：实现事件总线**
 
 ```python
 # src/core/events.py
@@ -972,7 +972,7 @@ class MessageType(Enum):
 @dataclass
 class Message:
     sender: str
-    receiver: str  # agent ID or "broadcast"
+    receiver: str  # 智能体 ID 或 "broadcast"
     type: MessageType
     payload: dict[str, Any]
     timestamp: float
@@ -983,7 +983,7 @@ MessageHandler = Callable[[Message], Awaitable[None]]
 
 
 class EventBus:
-    """Async pub/sub event bus for agent communication."""
+    """用于智能体通信的异步发布/订阅事件总线。"""
 
     def __init__(self):
         self._subscribers: dict[str, list[MessageHandler]] = {}
@@ -992,65 +992,65 @@ class EventBus:
         self._running = False
 
     def subscribe(self, agent_id: str, handler: MessageHandler):
-        """Register a handler for messages addressed to agent_id."""
+        """注册用于处理发往 agent_id 消息的处理器。"""
         if agent_id not in self._subscribers:
             self._subscribers[agent_id] = []
         self._subscribers[agent_id].append(handler)
 
     def unsubscribe(self, agent_id: str):
-        """Remove all handlers for agent_id."""
+        """移除 agent_id 的所有处理器。"""
         self._subscribers.pop(agent_id, None)
 
     async def publish(self, message: Message):
-        """Publish a message to the bus."""
+        """向总线发布消息。"""
         await self._queue.put(message)
 
     async def start(self):
-        """Start the message dispatch loop."""
+        """启动消息分发循环。"""
         self._running = True
         self._task = asyncio.create_task(self._dispatch_loop())
 
     async def stop(self):
-        """Stop the dispatch loop gracefully."""
+        """优雅地停止分发循环。"""
         self._running = False
-        await self._queue.put(None)  # Sentinel
+        await self._queue.put(None)  # 哨兵值
         if self._task:
             await self._task
 
     async def _dispatch_loop(self):
-        """Main loop: read messages from queue and dispatch to handlers."""
+        """主循环：从队列读取消息并分发到处理器。"""
         while self._running:
             message = await self._queue.get()
             if message is None:
                 break
 
             if message.receiver == "broadcast":
-                # Send to all subscribers except sender
+                # 发送给除发送者外的所有订阅者
                 for agent_id, handlers in self._subscribers.items():
                     if agent_id != message.sender:
                         for handler in handlers:
                             asyncio.create_task(self._safe_deliver(handler, message))
             else:
-                # Point-to-point
+                # 点对点
                 handlers = self._subscribers.get(message.receiver, [])
                 for handler in handlers:
                     asyncio.create_task(self._safe_deliver(handler, message))
 
     async def _safe_deliver(self, handler: MessageHandler, message: Message):
-        """Deliver message to handler, catching exceptions."""
+        """向处理器投递消息，捕获异常。"""
         try:
             await handler(message)
         except Exception:
-            # Log but don't crash the bus
+            # 记录日志但不崩溃总线
             pass
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_core/test_events.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_core/test_events.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/core/events.py tests/test_core/test_events.py
@@ -1059,15 +1059,15 @@ git commit -m "feat: async EventBus with point-to-point and broadcast messaging"
 
 ---
 
-## Task 6: LLM Provider Interface
+## 任务 6：LLM 提供商接口
 
-**Files:**
-- Create: `src/llm/__init__.py`
-- Create: `src/llm/provider.py`
-- Create: `tests/test_llm/__init__.py`
-- Create: `tests/test_llm/test_provider.py`
+**文件：**
+- 创建：`src/llm/__init__.py`
+- 创建：`src/llm/provider.py`
+- 创建：`tests/test_llm/__init__.py`
+- 创建：`tests/test_llm/test_provider.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_llm/test_provider.py
@@ -1112,12 +1112,12 @@ def test_llm_response_with_tool_calls():
     assert resp.tool_calls[0].name == "search"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_llm/test_provider.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_llm/test_provider.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement provider interface**
+- [ ] **步骤 3：实现提供商接口**
 
 ```python
 # src/llm/__init__.py
@@ -1152,7 +1152,7 @@ class LLMResponse:
 
 
 class LLMProvider(ABC):
-    """Abstract base for LLM providers."""
+    """LLM 提供商的抽象基类。"""
 
     @abstractmethod
     async def complete(
@@ -1161,7 +1161,7 @@ class LLMProvider(ABC):
         tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> LLMResponse:
-        """Send messages to the LLM and return a response."""
+        """向 LLM 发送消息并返回响应。"""
         ...
 
     @abstractmethod
@@ -1171,18 +1171,18 @@ class LLMProvider(ABC):
         tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> AsyncIterator[str]:
-        """Stream the LLM response token by token."""
+        """逐 token 流式传输 LLM 响应。"""
         ...
-        # Make this an async generator for type checking
+        # 使其成为异步生成器以进行类型检查
         yield ""  # pragma: no cover
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_llm/test_provider.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_llm/test_provider.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/llm/__init__.py src/llm/provider.py tests/test_llm/__init__.py tests/test_llm/test_provider.py
@@ -1191,13 +1191,13 @@ git commit -m "feat: LLM provider interface with LLMResponse, ToolCall, TokenUsa
 
 ---
 
-## Task 7: Anthropic LLM Implementation
+## 任务 7：Anthropic LLM 实现
 
-**Files:**
-- Create: `src/llm/anthropic.py`
-- Create: `tests/test_llm/test_anthropic.py`
+**文件：**
+- 创建：`src/llm/anthropic.py`
+- 创建：`tests/test_llm/test_anthropic.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_llm/test_anthropic.py
@@ -1208,7 +1208,7 @@ from src.llm.provider import LLMResponse, ToolCall, TokenUsage
 
 @pytest.mark.asyncio
 async def test_anthropic_complete_basic():
-    """Anthropic provider sends messages and returns structured response."""
+    """Anthropic 提供商发送消息并返回结构化响应。"""
     from src.llm.anthropic import AnthropicProvider
 
     mock_response = MagicMock()
@@ -1235,7 +1235,7 @@ async def test_anthropic_complete_basic():
 
 @pytest.mark.asyncio
 async def test_anthropic_complete_with_tool_use():
-    """Anthropic provider handles tool_use response."""
+    """Anthropic 提供商处理 tool_use 响应。"""
     from src.llm.anthropic import AnthropicProvider
 
     mock_tool_block = MagicMock()
@@ -1268,7 +1268,7 @@ async def test_anthropic_complete_with_tool_use():
 
 @pytest.mark.asyncio
 async def test_anthropic_retry_on_failure():
-    """Anthropic provider retries on API failure."""
+    """Anthropic 提供商在 API 失败时重试。"""
     from src.llm.anthropic import AnthropicProvider
     import anthropic
 
@@ -1292,12 +1292,12 @@ async def test_anthropic_retry_on_failure():
     assert result.content == "ok"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_llm/test_anthropic.py -v`
-Expected: FAIL with "ModuleNotFoundError: No module named 'src.llm.anthropic'"
+运行：`pytest tests/test_llm/test_anthropic.py -v`
+预期：失败，提示 "ModuleNotFoundError: No module named 'src.llm.anthropic'"
 
-- [ ] **Step 3: Implement Anthropic provider**
+- [ ] **步骤 3：实现 Anthropic 提供商**
 
 ```python
 # src/llm/anthropic.py
@@ -1310,7 +1310,7 @@ from src.llm.provider import LLMProvider, LLMResponse, TokenUsage, ToolCall
 
 
 class AnthropicProvider(LLMProvider):
-    """Anthropic Claude LLM provider with retry and tool use support."""
+    """Anthropic Claude LLM 提供商，支持重试和工具调用。"""
 
     def __init__(
         self,
@@ -1334,7 +1334,7 @@ class AnthropicProvider(LLMProvider):
         tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> LLMResponse:
-        """Send messages to Claude and return a response."""
+        """向 Claude 发送消息并返回响应。"""
         last_error = None
         for attempt in range(self.max_retries):
             try:
@@ -1363,7 +1363,7 @@ class AnthropicProvider(LLMProvider):
         tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> AsyncIterator[str]:
-        """Stream the Claude response."""
+        """流式传输 Claude 响应。"""
         params: dict[str, Any] = {
             "model": self.model,
             "max_tokens": kwargs.get("max_tokens", self.max_tokens),
@@ -1378,7 +1378,7 @@ class AnthropicProvider(LLMProvider):
                 yield text
 
     def _parse_response(self, response: Any) -> LLMResponse:
-        """Parse Anthropic response into our LLMResponse format."""
+        """将 Anthropic 响应解析为我们的 LLMResponse 格式。"""
         content = ""
         tool_calls = None
 
@@ -1409,12 +1409,12 @@ class AnthropicProvider(LLMProvider):
         )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_llm/test_anthropic.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_llm/test_anthropic.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/llm/anthropic.py tests/test_llm/test_anthropic.py
@@ -1423,16 +1423,16 @@ git commit -m "feat: Anthropic provider with tool use, retry, and streaming supp
 
 ---
 
-## Task 8: Integration Smoke Test
+## 任务 8：集成冒烟测试
 
-**Files:**
-- Create: `tests/test_integration.py`
+**文件：**
+- 创建：`tests/test_integration.py`
 
-- [ ] **Step 1: Write integration test**
+- [ ] **步骤 1：编写集成测试**
 
 ```python
 # tests/test_integration.py
-"""Smoke test: Core + LLM modules work together."""
+"""冒烟测试：Core + LLM 模块协同工作。"""
 import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1445,7 +1445,7 @@ from src.llm.provider import LLMResponse, TokenUsage
 
 
 def test_config_logging_integration(sample_config):
-    """Config drives logging setup."""
+    """配置驱动日志设置。"""
     settings = load_config(sample_config)
     setup_logging(level=settings.system.log_level)
     logger = get_logger("integration")
@@ -1453,7 +1453,7 @@ def test_config_logging_integration(sample_config):
 
 
 def test_exceptions_chain():
-    """Exceptions carry context through the chain."""
+    """异常在调用链中携带上下文。"""
     try:
         raise ToolError("file not found", tool_name="read_file", code="E404")
     except MultiAgentError as e:
@@ -1463,7 +1463,7 @@ def test_exceptions_chain():
 
 @pytest.mark.asyncio
 async def test_event_bus_with_llm_response():
-    """Event bus can carry LLM response payloads."""
+    """事件总线可以携带 LLM 响应载荷。"""
     bus = EventBus()
     received = []
 
@@ -1498,12 +1498,12 @@ async def test_event_bus_with_llm_response():
     assert received[0].payload["instruction"] == "Analysis complete"
 ```
 
-- [ ] **Step 2: Run all tests**
+- [ ] **步骤 2：运行所有测试**
 
-Run: `pytest tests/ -v`
-Expected: All tests PASS (config, exceptions, logging, events, provider, anthropic, integration)
+运行：`pytest tests/ -v`
+预期：所有测试通过（config、exceptions、logging、events、provider、anthropic、integration）
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
 ```bash
 git add tests/test_integration.py
@@ -1512,17 +1512,17 @@ git commit -m "test: integration smoke test for Core + LLM modules"
 
 ---
 
-## Verification Checklist
+## 验证清单
 
-After completing all tasks, run:
+完成所有任务后，运行：
 
 ```bash
-# All tests pass
+# 所有测试通过
 pytest tests/ -v
 
-# No import errors
+# 无导入错误
 python -c "from src.core.config import load_config; from src.core.events import EventBus; from src.llm.anthropic import AnthropicProvider; print('All imports OK')"
 
-# Config loads
+# 配置加载正常
 python -c "from src.core.config import load_config; s = load_config(Path('config.yaml')); print(f'System: {s.system.name}, LLM: {s.llm.model}')"
 ```

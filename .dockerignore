@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+
+# Data (will be mounted as volume)
+data/chroma/
+data/workspace/
+*.db
+
+# Logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Docs (not needed in image)
+docs/
+*.md
+!README.md
+
+# Dev tools
+server.log

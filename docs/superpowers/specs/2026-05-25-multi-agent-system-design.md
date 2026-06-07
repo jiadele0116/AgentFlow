@@ -1,65 +1,65 @@
-# Multi-Agent System Design Spec
+# 多智能体系统设计规格说明
 
-## Overview
+## 概述
 
-A Python-based multi-agent协作系统，集成 MCP、Tools、Skills 和 RAG 四大核心模块。基于事件驱动架构，多个 Agent 并行或串行协作，通过统一协议层调度工具与技能，结合 RAG 实现知识增强决策。
+基于 Python 的多智能体协作系统，集成 MCP、Tools、Skills 和 RAG 四大核心模块。基于事件驱动架构，多个 Agent 并行或串行协作，通过统一协议层调度工具与技能，结合 RAG 实现知识增强决策。
 
-## Key Decisions
+## 关键决策
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Architecture | Event-Driven (asyncio.Queue) | Matches PRD's message bus spec, loose coupling, natural parallelism |
-| LLM Provider | Anthropic (Claude) | Strong tool-use support, well-documented SDK |
-| Vector Store | ChromaDB | Persistent storage, good querying, production-ready |
-| Embedding Model | BAAI/bge-m3 | 1024-dim, excellent Chinese support, sentence-transformers |
-| Build Strategy | Incremental, module by module | Validate each module before stacking next |
-| API Layer | Deferred | Focus on core logic first, add FastAPI later |
+| 决策项 | 选择 | 理由 |
+|--------|------|------|
+| 架构 | 事件驱动 (asyncio.Queue) | 符合 PRD 的消息总线规格，松耦合，天然支持并行 |
+| LLM 提供商 | Anthropic (Claude) | 强大的工具调用支持，完善的 SDK 文档 |
+| 向量存储 | ChromaDB | 持久化存储，良好的查询能力，可用于生产环境 |
+| 嵌入模型 | BAAI/bge-m3 | 1024 维，优秀的中文支持，基于 sentence-transformers |
+| 构建策略 | 增量式，逐模块推进 | 每个模块验证通过后再叠加下一个 |
+| API 层 | 推迟实现 | 优先聚焦核心逻辑，后续再添加 FastAPI |
 
-## Module Decomposition & Build Order
+## 模块拆分与构建顺序
 
 ```
-Phase 1: Foundation
-  1. Core     (config, logging, exceptions, event bus)
-  2. LLM      (Anthropic provider, unified interface)
+第一阶段：基础层
+  1. Core     (配置、日志、异常、事件总线)
+  2. LLM      (Anthropic 提供商，统一接口)
 
-Phase 2: Capabilities
-  3. Tools    (registry, engine, sandbox, built-in tools)
-  4. RAG      (processor, chunker, embedder, ChromaDB, retrieval)
+第二阶段：能力层
+  3. Tools    (注册表、引擎、沙箱、内置工具)
+  4. RAG      (处理器、分块器、嵌入器、ChromaDB、检索)
 
-Phase 3: Orchestration
-  5. Agents   (base, types, memory, strategies, message bus)
-  6. MCP      (protocol, client, servers)
-  7. Skills   (engine, loader, YAML definitions)
+第三阶段：编排层
+  5. Agents   (基类、类型、记忆、策略、消息总线)
+  6. MCP      (协议、客户端、服务器)
+  7. Skills   (引擎、加载器、YAML 定义)
 ```
 
-Dependencies flow downward only. Each module is a Python package under `src/`.
+依赖关系仅向下流动。每个模块都是 `src/` 下的一个 Python 包。
 
 ---
 
-## Phase 1: Foundation
+## 第一阶段：基础层
 
-### 1. Core Module (`src/core/`)
+### 1. Core 模块 (`src/core/`)
 
 #### config.py
-- Loads `config.yaml` using PyYAML
-- Supports `${ENV_VAR}` expansion for secrets (api_key, connection_string)
-- Singleton `Settings` object with typed access: `settings.llm.model`, `settings.rag.chunk_size`
-- Pydantic models for config validation
+- 使用 PyYAML 加载 `config.yaml`
+- 支持 `${ENV_VAR}` 环境变量替换（用于密钥、连接字符串等敏感信息）
+- 单例 `Settings` 对象，支持类型化访问：`settings.llm.model`、`settings.rag.chunk_size`
+- 使用 Pydantic 模型进行配置验证
 
 #### logging.py
-- Structured JSON logging via Python's `logging` module
-- Every log entry includes `trace_id` for correlation
-- Configurable log level from `settings.system.log_level`
+- 基于 Python `logging` 模块的结构化 JSON 日志
+- 每条日志包含 `trace_id` 用于关联追踪
+- 日志级别可通过 `settings.system.log_level` 配置
 
 #### exceptions.py
-- Base `MultiAgentError` with error code and context dict
-- Subclasses: `AgentError`, `ToolError`, `SkillError`, `RAGError`, `MCPError`, `ConfigError`
-- Each carries relevant context (agent_id, tool_name, etc.)
+- 基础异常类 `MultiAgentError`，携带错误码和上下文字典
+- 子类：`AgentError`、`ToolError`、`SkillError`、`RAGError`、`MCPError`、`ConfigError`
+- 每个异常携带相关上下文（agent_id、tool_name 等）
 
 #### events.py
-- Async pub/sub event bus built on `asyncio.Queue`
-- Point-to-point (agent A → agent B) and broadcast mode
-- `Message` dataclass:
+- 基于 `asyncio.Queue` 的异步发布/订阅事件总线
+- 支持点对点（Agent A → Agent B）和广播模式
+- `Message` 数据类：
 
 ```python
 class MessageType(Enum):
@@ -72,17 +72,17 @@ class MessageType(Enum):
 @dataclass
 class Message:
     sender: str          # Agent ID
-    receiver: str        # Agent ID or "broadcast"
+    receiver: str        # Agent ID 或 "broadcast"
     type: MessageType
     payload: dict
     timestamp: float
-    correlation_id: str  # tracks task chains
+    correlation_id: str  # 用于追踪任务链
 ```
 
-- Bus runs as background asyncio task, dispatches to subscriber callbacks
-- API: `bus.subscribe(agent_id, callback)`, `bus.publish(message)`
+- 总线作为后台 asyncio 任务运行，分发消息到订阅者回调
+- API：`bus.subscribe(agent_id, callback)`、`bus.publish(message)`
 
-### 2. LLM Module (`src/llm/`)
+### 2. LLM 模块 (`src/llm/`)
 
 #### provider.py
 ```python
@@ -92,10 +92,10 @@ class LLMProvider(ABC):
 ```
 
 #### anthropic.py
-- Uses `anthropic` SDK
-- Supports tool use (function calling) — critical for Agents and Skills
-- Automatic retry with exponential backoff (3 retries)
-- Maps config: `settings.llm.model`, `settings.llm.api_key`, `settings.llm.temperature`, `settings.llm.max_tokens`
+- 使用 `anthropic` SDK
+- 支持工具调用（function calling）—— 对 Agent 和 Skills 至关重要
+- 自动重试，指数退避（最多 3 次）
+- 配置映射：`settings.llm.model`、`settings.llm.api_key`、`settings.llm.temperature`、`settings.llm.max_tokens`
 
 ```python
 @dataclass
@@ -106,23 +106,23 @@ class LLMResponse:
     model: str
 ```
 
-Zero dependencies on other modules.
+不依赖其他模块。
 
 ---
 
-## Phase 2: Capabilities
+## 第二阶段：能力层
 
-### 3. Tools Module (`src/tools/`)
+### 3. Tools 模块 (`src/tools/`)
 
 #### registry.py
-- Central dict: tool name → Tool definition
-- Decorator registration: `@register_tool(name, description, parameters, timeout, retry, requires_confirmation)`
-- `list_tools() -> list[dict]` returns JSON Schema descriptions for LLM consumption
+- 中心字典：工具名 → Tool 定义
+- 装饰器注册：`@register_tool(name, description, parameters, timeout, retry, requires_confirmation)`
+- `list_tools() -> list[dict]` 返回 JSON Schema 描述，供 LLM 使用
 
 #### engine.py
-- Execution pipeline: param validation → permission check → timeout → retry → result formatting → audit log
-- All async, configurable timeout (default 30s)
-- Returns `ToolResult(success, data, error, duration_ms)`
+- 执行管线：参数校验 → 权限检查 → 超时 → 重试 → 结果格式化 → 审计日志
+- 全异步，可配置超时（默认 30 秒）
+- 返回 `ToolResult(success, data, error, duration_ms)`
 
 ```python
 class ToolEngine:
@@ -132,22 +132,22 @@ class ToolEngine:
 ```
 
 #### sandbox.py
-- For code execution tools (run_python, run_shell)
-- `RestrictedPython` for Python sandboxing
-- File system restricted to workspace directory from config
-- Memory/CPU limits where available
+- 用于代码执行工具（run_python、run_shell）
+- 使用 `RestrictedPython` 进行 Python 沙箱化
+- 文件系统限制在配置的工作目录内
+- 内存/CPU 使用限制（在可用的情况下）
 
-#### builtin/ — 4 files
+#### builtin/ — 4 个文件
 
-**file_ops.py**: `read_file`, `write_file`, `search_files`
-**code_exec.py**: `run_python`, `run_shell`, `lint_code`
-**network.py**: `fetch_url`, `search_web`
-**data_ops.py**: `parse_json`, `csv_to_dict`, `json_to_csv`
-**rag_ops.py**: `search_knowledge(query, collection, top_k)`, `index_document(doc, collection)` — RAG-powered tools that bridge Tools and RAG modules
+**file_ops.py**：`read_file`、`write_file`、`search_files`
+**code_exec.py**：`run_python`、`run_shell`、`lint_code`
+**network.py**：`fetch_url`、`search_web`
+**data_ops.py**：`parse_json`、`csv_to_dict`、`json_to_csv`
+**rag_ops.py**：`search_knowledge(query, collection, top_k)`、`index_document(doc, collection)` —— RAG 驱动的工具，桥接 Tools 和 RAG 模块
 
-Each tool is a function decorated with `@register_tool`.
+每个工具都是用 `@register_tool` 装饰的函数。
 
-### 4. RAG Module (`src/rag/`)
+### 4. RAG 模块 (`src/rag/`)
 
 #### processor.py
 ```python
@@ -162,19 +162,19 @@ class DocumentProcessor:
 ```
 
 #### chunker.py
-- Pluggable strategy interface
-- Strategies: `fixed_size`, `sentence`, `semantic`, `code`, `recursive`
-- Default: `recursive` — splits by Markdown headers, then by token count
-- Config: `chunk_size=512`, `overlap=64`
+- 可插拔的策略接口
+- 策略：`fixed_size`、`sentence`、`semantic`、`code`、`recursive`
+- 默认：`recursive` —— 先按 Markdown 标题分割，再按 token 数量分割
+- 配置：`chunk_size=512`、`overlap=64`
 
 #### embedder.py
-- Wraps `sentence-transformers` with `BAAI/bge-m3`
-- `embed(text) -> list[float]`, `embed_batch(texts) -> list[list[float]]`
-- Device configurable (cpu/cuda) from config
+- 封装 `sentence-transformers`，使用 `BAAI/bge-m3`
+- `embed(text) -> list[float]`、`embed_batch(texts) -> list[list[float]]`
+- 设备可通过配置指定（cpu/cuda）
 
 #### stores/chroma_store.py
-- Implements `VectorStore` ABC with `upsert`, `search`, `delete`
-- Uses `chromadb` with persistent storage at `settings.vector_store.persist_dir`
+- 实现 `VectorStore` 抽象类的 `upsert`、`search`、`delete` 方法
+- 使用 `chromadb`，持久化存储于 `settings.vector_store.persist_dir`
 
 #### vector_store.py
 ```python
@@ -188,20 +188,20 @@ class VectorStore(ABC):
 ```
 
 #### retrieval.py
-- Hybrid search: vector similarity + BM25 keyword
-- RRF (Reciprocal Rank Fusion) to combine results
-- Optional reranking via `BAAI/bge-reranker-v2-m3`
-- Configurable `top_k`, `rerank` flag
+- 混合搜索：向量相似度 + BM25 关键词
+- RRF（倒数排名融合）合并结果
+- 可选重排序，使用 `BAAI/bge-reranker-v2-m3`
+- 可配置 `top_k`、`rerank` 标志
 
 #### query_rewrite.py
-- Uses LLM to rewrite queries for better retrieval
-- Optional — controlled by `config.rag.rewrite`
+- 使用 LLM 改写查询以提高检索效果
+- 可选功能 —— 由 `config.rag.rewrite` 控制
 
 ---
 
-## Phase 3: Orchestration
+## 第三阶段：编排层
 
-### 5. Agents Module (`src/agents/`)
+### 5. Agents 模块 (`src/agents/`)
 
 #### base.py
 ```python
@@ -220,7 +220,7 @@ class Task:
     description: str
     input_data: dict
     assigned_to: str | None = None
-    parent_id: str | None = None  # for subtask tracking
+    parent_id: str | None = None  # 用于子任务追踪
 
 @dataclass
 class Result:
@@ -245,22 +245,22 @@ class BaseAgent(ABC):
     async def transition(self, new_state: AgentState): ...
 ```
 
-#### 5 Agent Types
+#### 5 种 Agent 类型
 
-**planner.py** — `PlannerAgent`: Receives user task, decomposes into subtasks, assigns to executor. Uses LLM for task decomposition.
+**planner.py** — `PlannerAgent`：接收用户任务，分解为子任务，分配给执行器。使用 LLM 进行任务分解。
 
-**executor.py** — `ExecutorAgent`: Executes subtasks by calling Tools/Skills. Reports results back to planner.
+**executor.py** — `ExecutorAgent`：通过调用 Tools/Skills 执行子任务。将结果报告给规划器。
 
-**critic.py** — `CriticAgent`: Reviews executor output for correctness, performance, security, maintainability. Provides feedback or approval.
+**critic.py** — `CriticAgent`：审查执行器输出的正确性、性能、安全性、可维护性。提供反馈或批准。
 
-**retriever.py** — `RetrieverAgent`: Runs RAG retrieval, provides knowledge context to other agents on request.
+**retriever.py** — `RetrieverAgent`：执行 RAG 检索，按需为其他 Agent 提供知识上下文。
 
-**coordinator.py** — `CoordinatorAgent`: Manages inter-agent communication, resolves conflicts, tracks overall task progress.
+**coordinator.py** — `CoordinatorAgent`：管理 Agent 间通信，解决冲突，追踪整体任务进度。
 
 #### memory.py
-- **Short-term**: In-memory list of recent messages (configurable max, default 20 turns)
-- **Long-term**: SQLite-backed persistence via `aiosqlite`
-- Per-agent isolation
+- **短期记忆**：内存中的最近消息列表（可配置最大数量，默认 20 轮）
+- **长期记忆**：基于 `aiosqlite` 的 SQLite 持久化存储
+- 按 Agent 隔离
 
 #### strategy.py
 ```python
@@ -268,28 +268,28 @@ class ExecutionStrategy(ABC):
     async def execute(self, task: Task, agent: BaseAgent) -> Result: ...
 
 class ReActStrategy(ExecutionStrategy):
-    # Thought → Action → Observation loop
+    # 思考 → 行动 → 观察 循环
 
 class PlanExecuteStrategy(ExecutionStrategy):
-    # Plan first, then execute step by step
+    # 先规划，再逐步执行
 
 class CoTStrategy(ExecutionStrategy):
-    # Chain-of-thought reasoning
+    # 思维链推理
 ```
 
 #### message_bus.py
-- Wraps Core `EventBus` with agent-specific routing
-- Manages lifecycle transitions (INIT → IDLE → PLANNING → EXECUTING → REVIEWING → COMPLETED)
-- REVISING loop back to EXECUTING when critic provides feedback
-- Correlation ID tracking for task chains
+- 封装 Core 层的 `EventBus`，提供 Agent 专属路由
+- 管理生命周期转换（INIT → IDLE → PLANNING → EXECUTING → REVIEWING → COMPLETED）
+- 当 Critic 提供反馈时，REVISING 循环回到 EXECUTING
+- 关联 ID 追踪任务链
 
-### 6. MCP Module (`src/mcp/`)
+### 6. MCP 模块 (`src/mcp/`)
 
 #### protocol.py
 ```python
 @dataclass
 class MCPRequest:
-    method: str           # "tools/call", "resources/read", etc.
+    method: str           # "tools/call"、"resources/read" 等
     params: dict
     request_id: str
 
@@ -312,20 +312,20 @@ class MCPServer(ABC):
 ```
 
 #### client.py
-- Connects to MCP servers, sends requests, receives responses
-- Used by Agents to access external tools through uniform interface
-- Connection pooling, timeout management
+- 连接 MCP 服务器，发送请求，接收响应
+- 供 Agent 通过统一接口访问外部工具
+- 连接池、超时管理
 
-#### servers/ — 4 built-in servers
+#### servers/ — 4 个内置服务器
 
-| File | Server | Tools | Resources |
-|------|--------|-------|-----------|
-| `filesystem.py` | FileSystemServer | read_file, write_file, list_dir, search_files | `file://` |
-| `database.py` | DatabaseServer | query, execute, describe_table | `db://` |
-| `web.py` | WebServer | fetch_url, scrape, search_web | `https://` |
-| `code.py` | CodeServer | run_python, lint, format | `code://` |
+| 文件 | 服务器 | 工具 | 资源 |
+|------|--------|------|------|
+| `filesystem.py` | FileSystemServer | read_file、write_file、list_dir、search_files | `file://` |
+| `database.py` | DatabaseServer | query、execute、describe_table | `db://` |
+| `web.py` | WebServer | fetch_url、scrape、search_web | `https://` |
+| `code.py` | CodeServer | run_python、lint、format | `code://` |
 
-Custom server extension via decorators:
+自定义服务器扩展通过装饰器实现：
 ```python
 @mcp_server(name="custom", version="1.0")
 class CustomServer:
@@ -333,7 +333,7 @@ class CustomServer:
     @resource(uri_scheme="custom") async def my_resource(self, uri): ...
 ```
 
-### 7. Skills Module (`src/skills/`)
+### 7. Skills 模块 (`src/skills/`)
 
 #### engine.py
 ```python
@@ -364,25 +364,25 @@ class SkillEngine:
 ```
 
 #### loader.py
-- Loads skill definitions from YAML files in `definitions/`
-- Validates against schema
-- Supports hot-reload for development
+- 从 `definitions/` 目录加载 YAML 格式的技能定义
+- 按 schema 验证
+- 支持开发时热重载
 
-#### definitions/ — 5 YAML files
+#### definitions/ — 5 个 YAML 文件
 
-| File | Skill | Tools |
-|------|-------|-------|
-| `code_review.yaml` | code_review | read_file, lint_code, search_knowledge |
-| `bug_fix.yaml` | bug_fix | search_files, read_file, run_python, write_file |
-| `data_analysis.yaml` | data_analysis | csv_to_dict, run_python, write_file |
-| `doc_generator.yaml` | doc_generator | read_file, search_files, write_file |
-| `research.yaml` | research | search_web, fetch_url, search_knowledge, index_document |
+| 文件 | 技能 | 使用的工具 |
+|------|------|-----------|
+| `code_review.yaml` | code_review | read_file、lint_code、search_knowledge |
+| `bug_fix.yaml` | bug_fix | search_files、read_file、run_python、write_file |
+| `data_analysis.yaml` | data_analysis | csv_to_dict、run_python、write_file |
+| `doc_generator.yaml` | doc_generator | read_file、search_files、write_file |
+| `research.yaml` | research | search_web、fetch_url、search_knowledge、index_document |
 
-Each YAML uses Jinja2-style template resolution: `{{ input.file_path }}`, `{{ code_content }}`.
+每个 YAML 使用 Jinja2 风格的模板解析：`{{ input.file_path }}`、`{{ code_content }}`。
 
 ---
 
-## Project Structure
+## 项目结构
 
 ```
 multi_agent_system/
@@ -393,7 +393,7 @@ multi_agent_system/
 │
 ├── src/
 │   ├── __init__.py
-│   ├── main.py                    # Entry point
+│   ├── main.py                    # 入口点
 │   │
 │   ├── core/
 │   │   ├── __init__.py
@@ -483,7 +483,7 @@ multi_agent_system/
 └── config.yaml
 ```
 
-## Dependencies
+## 依赖
 
 ```toml
 [project]
@@ -518,9 +518,9 @@ dev = [
 ]
 ```
 
-## Configuration
+## 配置
 
-`config.yaml` at project root:
+项目根目录下的 `config.yaml`：
 
 ```yaml
 system:
@@ -573,23 +573,23 @@ mcp:
       allowed_domains: ["*"]
 ```
 
-## Non-Functional Requirements
+## 非功能性需求
 
-| Dimension | Requirement |
-|-----------|-------------|
-| Concurrency | Up to 5 agents in parallel |
-| Timeout | Tool calls: 30s default, configurable |
-| Retry | LLM calls: 3 retries, exponential backoff |
-| Logging | Structured JSON, trace_id on every entry |
-| Observability | Every Agent/Tool call has trace_id for tracing |
-| Security | Tool permission control, sandboxed code execution, input validation |
-| Extensibility | New Agent/Tool/Skill/MCP Server can be registered as plugins |
+| 维度 | 要求 |
+|------|------|
+| 并发 | 最多支持 5 个 Agent 并行执行 |
+| 超时 | 工具调用默认 30 秒，可配置 |
+| 重试 | LLM 调用失败自动重试 3 次，指数退避 |
+| 日志 | 结构化 JSON，每条日志包含 trace_id |
+| 可观测性 | 每个 Agent/Tool 调用都有 trace_id 用于链路追踪 |
+| 安全 | 工具权限控制、沙箱化代码执行、输入校验 |
+| 可扩展性 | 新的 Agent/Tool/Skill/MCP Server 均可作为插件注册 |
 
-## Out of Scope (Deferred)
+## 暂不实现（推迟）
 
-- FastAPI REST API layer
-- WebSocket real-time communication
-- CLI interface (typer)
-- PostgreSQL backend for long-term memory
-- FAISS vector store backend
-- OpenAI/local LLM providers
+- FastAPI REST API 层
+- WebSocket 实时通信
+- CLI 接口（typer）
+- PostgreSQL 长期记忆后端
+- FAISS 向量存储后端
+- OpenAI/本地 LLM 提供商

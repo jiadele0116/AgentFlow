@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent System 技术文档</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<style>
+:root {
+  --brand: #1a7a5a;
+  --brand-light: #e6f7ef;
+  --brand-hover: #15614a;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --bg-white: #ffffff;
+  --bg-sidebar: #f9fafb;
+  --bg-code: #f4f6f8;
+  --border: #e5e7eb;
+  --sidebar-w: 280px;
+  --header-h: 60px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-white);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ Header ============ */
+.header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  z-index: 100;
+}
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.header-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: var(--brand);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-left: 48px;
+}
+.header-nav a {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.header-nav a:hover, .header-nav a.active { color: var(--brand); }
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.search-box kbd {
+  font-size: 11px;
+  padding: 1px 5px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+}
+.version-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  background: var(--brand-light);
+  color: var(--brand);
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+/* ============ Sidebar ============ */
+.sidebar {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  width: var(--sidebar-w);
+  height: calc(100vh - var(--header-h));
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 24px 0;
+  z-index: 50;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-title {
+  padding: 8px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sidebar-item {
+  display: block;
+  padding: 7px 24px 7px 28px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.sidebar-item:hover {
+  color: var(--brand);
+  background: rgba(26,122,90,0.04);
+}
+.sidebar-item.active {
+  color: var(--brand);
+  background: var(--brand-light);
+  border-left-color: var(--brand);
+  font-weight: 500;
+}
+
+/* ============ Main Content ============ */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--header-h);
+  min-height: calc(100vh - var(--header-h));
+  padding: 40px 80px 120px;
+  max-width: 960px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.breadcrumb a {
+  color: var(--brand);
+  text-decoration: none;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .sep { color: var(--border); }
+
+/* Page title */
+.page-title {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+.page-desc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+/* Section */
+.section { margin-bottom: 48px; }
+.section-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-subtitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 28px 0 12px;
+}
+
+/* Paragraph */
+p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+p.secondary { color: var(--text-secondary); }
+
+/* Code inline */
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 13.5px;
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--brand);
+}
+
+/* Code block */
+.code-block {
+  position: relative;
+  margin: 16px 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-code);
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #eef1f5;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.code-header .lang { font-weight: 500; }
+.code-block pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+}
+.code-block code {
+  background: transparent;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 24px;
+  font-size: 14px;
+}
+th {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+td {
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  color: var(--text-primary);
+}
+
+/* List */
+ul, ol {
+  margin: 8px 0 16px 24px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+li { margin-bottom: 6px; }
+li code { font-size: 12.5px; }
+
+/* Card */
+.card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 16px 0;
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+/* Architecture diagram (ASCII) */
+.arch-diagram {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 16px 0 24px;
+  overflow-x: auto;
+}
+.arch-diagram pre {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+/* Callout */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.callout.info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+.callout.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+.callout.warning {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+.callout-icon { font-size: 18px; flex-shrink: 0; }
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9999px;
+  vertical-align: middle;
+}
+.badge-green { background: var(--brand-light); color: var(--brand); }
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-gray { background: #f3f4f6; color: #6b7280; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 32px 24px 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <a href="/docs" class="header-logo">
+    <div class="logo-icon">M</div>
+    <span>Multi-Agent System</span>
+  </a>
+  <nav class="header-nav">
+    <a href="/docs" class="active">文档</a>
+    <a href="/">聊天</a>
+    <a href="/health">API</a>
+  </nav>
+  <div class="header-right">
+    <div class="search-box">
+      <span>🔍</span>
+      <span>搜索文档</span>
+      <kbd>⌘K</kbd>
+    </div>
+    <span class="version-tag">v0.1.0</span>
+  </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-title">开始</div>
+    <a href="#overview" class="sidebar-item active" onclick="setActive(this)">项目概述</a>
+    <a href="#quickstart" class="sidebar-item" onclick="setActive(this)">快速开始</a>
+    <a href="#architecture" class="sidebar-item" onclick="setActive(this)">架构设计</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title">核心概念</div>
+    <a href="#langchain" class="sidebar-item" onclick="setActive(this)">LangChain</a>
+    <a href="#langgraph" class="sidebar-item" onclick="setActive(this)">LangGraph</a>
+    <a href="#fastapi" class="sidebar-item" onclick="setActive(this)">FastAPI</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title">模块详解</div>
+    <a href="#config" class="sidebar-item" onclick="setActive(this)">配置系统</a>
+    <a href="#llm" class="sidebar-item" onclick="setActive(this)">LLM 模块</a>
+    <a href="#tools" class="sidebar-item" onclick="setActive(this)">工具系统</a>
+    <a href="#agents" class="sidebar-item" onclick="setActive(this)">Agent 系统</a>
+    <a href="#api" class="sidebar-item" onclick="setActive(this)">Web 服务</a>
+    <a href="#rag" class="sidebar-item" onclick="setActive(this)">RAG 模块</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title">参考</div>
+    <a href="#exceptions" class="sidebar-item" onclick="setActive(this)">异常体系</a>
+    <a href="#logging" class="sidebar-item" onclick="setActive(this)">日志系统</a>
+    <a href="#project-structure" class="sidebar-item" onclick="setActive(this)">项目结构</a>
+    <a href="#faq" class="sidebar-item" onclick="setActive(this)">常见问题</a>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <span>🏠</span>
+  <span class="sep">/</span>
+  <a href="/docs">Multi-Agent System</a>
+  <span class="sep">/</span>
+  <span>技术文档</span>
+</div>
+
+<h1 class="page-title">Multi-Agent System 技术文档</h1>
+<p class="page-desc">基于 LangChain + LangGraph + FastAPI 构建的多 Agent 协作系统。多个 AI Agent 分工协作，支持工具调用、知识检索、质量审查。</p>
+
+<!-- ==================== 项目概述 ==================== -->
+<div class="section" id="overview">
+  <h2 class="section-title">项目概述</h2>
+
+  <h3 class="section-subtitle">这是什么</h3>
+  <p>Multi-Agent System 是一个多智能体协作框架。与单个 AI 对话不同，这里的多个 Agent 各司其职：<strong>Planner</strong> 负责任务分解，<strong>Executor</strong> 负责执行（可调用工具），<strong>Critic</strong> 负责质量审查。不通过则回退修订。</p>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div>核心理念：复杂任务不是一个 Agent 能搞定的，需要分工协作、互相审查。</div>
+  </div>
+
+  <h3 class="section-subtitle">技术栈</h3>
+  <table>
+    <tr><th>技术</th><th>用途</th><th>版本</th></tr>
+    <tr><td><strong>LangChain</strong></td><td>LLM 统一调用接口、工具定义</td><td>≥0.3.0</td></tr>
+    <tr><td><strong>LangGraph</strong></td><td>多 Agent 状态图工作流</td><td>≥0.2.0</td></tr>
+    <tr><td><strong>FastAPI</strong></td><td>Web 服务 + WebSocket 实时通信</td><td>≥0.111.0</td></tr>
+    <tr><td><strong>Pydantic</strong></td><td>配置验证、数据模型</td><td>≥2.7.0</td></tr>
+    <tr><td><strong>ChromaDB</strong></td><td>向量数据库（RAG）</td><td>≥0.5.0</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 快速开始 ==================== -->
+<div class="section" id="quickstart">
+  <h2 class="section-title">快速开始</h2>
+
+  <h3 class="section-subtitle">1. 安装依赖</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">bash</span></div>
+    <pre><code class="language-bash">pip install -e .</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">2. 配置环境变量</h3>
+  <p>根据 <code>config.yaml</code> 中的 <code>llm.provider</code> 设置对应的 API Key：</p>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">bash</span></div>
+    <pre><code class="language-bash"># Anthropic
+export ANTHROPIC_API_KEY="your-api-key"
+
+# 或 通义千问
+export DASHSCOPE_API_KEY="your-api-key"</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">3. 启动服务</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">bash</span></div>
+    <pre><code class="language-bash">python -m src.main</code></pre>
+  </div>
+  <p>输出：</p>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">output</span></div>
+    <pre><code>Starting Multi-Agent System v0.1.0
+LangChain LLM: qwen / qwen3-rerank
+Registered 10 tools
+Converted 10 tools to LangChain format
+Multi-agent graph compiled
+Web server starting at http://localhost:8000</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">4. 访问</h3>
+  <p>浏览器打开 <a href="http://localhost:8000" style="color:var(--brand)">http://localhost:8000</a>，即可开始与多 Agent 系统对话。</p>
+</div>
+
+<!-- ==================== 架构设计 ==================== -->
+<div class="section" id="architecture">
+  <h2 class="section-title">架构设计</h2>
+
+  <p>系统采用分层架构，自上而下依次为：用户接口层 → Agent 编排层 → 能力层 → 基础设施层。</p>
+
+  <div class="arch-diagram"><pre>
+┌─────────────────────────────────────────────────────────┐
+│                    用户浏览器                             │
+│              Stripe 风格聊天界面 (WebSocket)               │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                 FastAPI Web 服务                          │
+│            server.py ─ chat.py ─ models.py               │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│            LangGraph 多 Agent 协作图                      │
+│                                                          │
+│    ┌──────────┐    ┌──────────┐    ┌──────────┐         │
+│    │ Planner  │───→│ Executor │───→│  Critic  │         │
+│    │  任务规划  │    │  任务执行  │    │  质量审查  │         │
+│    └──────────┘    └────┬─────┘    └────┬─────┘         │
+│                         │               │                │
+│                         │   不通过 ←────┘                │
+│                         └─────────────────→ 修订         │
+└────────────────────────┬────────────────────────────────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼            ▼            ▼
+     ┌───────────┐ ┌──────────┐ ┌─────────┐
+     │ LangChain │ │  Tools   │ │   RAG   │
+     │  LLM API  │ │  10 个工具 │ │ 知识检索  │
+     └───────────┘ └──────────┘ └─────────┘</pre>
+  </div>
+</div>
+
+<!-- ==================== LangChain ==================== -->
+<div class="section" id="langchain">
+  <h2 class="section-title">核心概念：LangChain</h2>
+
+  <p>LangChain 是 LLM 应用的统一接口层。不同厂商的 LLM（Anthropic Claude、通义千问、OpenAI）API 各不相同，LangChain 提供统一的 <code>BaseChatModel</code> 接口，让你不用关心底层差异。</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python"># 不用 LangChain：每个厂商写一套
+anthropic_client.messages.create(...)
+dashscope.Generation.call(...)
+
+# 用 LangChain：统一接口
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import HumanMessage
+
+async def ask(llm: BaseChatModel, question: str):
+    response = await llm.ainvoke([HumanMessage(content=question)])
+    return response.content
+
+# 传入 ChatAnthropic 或 ChatTongyi 都可以
+answer = await ask(llm, "什么是 RAG?")</code></pre>
+  </div>
+
+  <p>本项目中 LangChain 负责三件事：</p>
+  <ul>
+    <li><strong>统一 LLM 调用</strong> — <code>src/llm/langchain_llm.py</code> 根据配置创建对应的 ChatModel</li>
+    <li><strong>工具定义</strong> — <code>src/tools/langchain_tools.py</code> 将 Python 函数包装为 LLM 可调用的工具</li>
+    <li><strong>消息格式</strong> — 使用 <code>HumanMessage</code>、<code>SystemMessage</code>、<code>AIMessage</code> 标准化消息</li>
+  </ul>
+</div>
+
+<!-- ==================== LangGraph ==================== -->
+<div class="section" id="langgraph">
+  <h2 class="section-title">核心概念：LangGraph</h2>
+
+  <p>LangGraph 是 LangChain 生态的状态图框架，用于构建<strong>有状态的多步骤工作流</strong>。普通的 LLM 调用是一问一答，但多 Agent 协作需要：先规划 → 再执行 → 再审查 → 不通过还要回退。这就是 LangGraph 解决的问题。</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from typing import TypedDict
+from langgraph.graph import StateGraph, END
+
+# 1. 定义状态（在节点之间传递的数据）
+class MyState(TypedDict):
+    task: str
+    result: str
+    approved: bool
+
+# 2. 定义节点（处理函数）
+async def do_task(state):
+    return {"result": "完成了"}
+
+async def review(state):
+    return {"approved": True}
+
+# 3. 构建图（节点 + 边）
+graph = StateGraph(MyState)
+graph.add_node("worker", do_task)
+graph.add_node("reviewer", review)
+graph.set_entry_point("worker")
+graph.add_edge("worker", "reviewer")
+graph.add_conditional_edges("reviewer", lambda s: "end" if s["approved"] else "worker")
+
+# 4. 编译并运行
+app = graph.compile()
+result = await app.ainvoke({"task": "分析代码", "result": "", "approved": False})</code></pre>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-icon">✅</span>
+    <div><strong>LangGraph 的核心价值</strong>：把"谁先执行、谁后执行、什么条件回退"这些流程控制逻辑，从代码中的 if-else 变成了可视化的图结构。</div>
+  </div>
+</div>
+
+<!-- ==================== FastAPI ==================== -->
+<div class="section" id="fastapi">
+  <h2 class="section-title">核心概念：FastAPI</h2>
+
+  <p>FastAPI 是 Python 异步 Web 框架，本项目用它提供 HTTP 和 WebSocket 服务。</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from fastapi import FastAPI, WebSocket
+
+app = FastAPI()
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+@app.websocket("/ws/chat")
+async def chat(ws: WebSocket):
+    await ws.accept()
+    while True:
+        data = await ws.receive_json()
+        await ws.send_json({"reply": "收到"})</code></pre>
+  </div>
+</div>
+
+<!-- ==================== 配置系统 ==================== -->
+<div class="section" id="config">
+  <h2 class="section-title">配置系统</h2>
+
+  <p><code>config.yaml</code> 是系统的唯一配置入口，使用 Pydantic 做类型验证，支持 <code>${ENV_VAR}</code> 环境变量替换。</p>
+
+  <h3 class="section-subtitle">配置文件结构</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">yaml</span></div>
+    <pre><code class="language-yaml">system:
+  name: "Multi-Agent System"
+  version: "0.1.0"
+  log_level: INFO
+
+llm:
+  provider: qwen              # anthropic / qwen
+  model: qwen3-rerank
+  api_key: ${ANTHROPIC_API_KEY}  # 环境变量替换
+  temperature: 0.7
+  max_tokens: 4096
+
+rag:
+  chunk_size: 512
+  chunk_overlap: 64
+  retrieval_top_k: 5</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">配置类层级</h3>
+  <table>
+    <tr><th>类名</th><th>用途</th><th>关键字段</th></tr>
+    <tr><td><code>Settings</code></td><td>顶层容器</td><td>聚合所有子配置</td></tr>
+    <tr><td><code>SystemConfig</code></td><td>系统信息</td><td><code>name</code>, <code>version</code>, <code>log_level</code></td></tr>
+    <tr><td><code>LLMConfig</code></td><td>LLM 配置</td><td><code>provider</code>, <code>model</code>, <code>api_key</code></td></tr>
+    <tr><td><code>RAGConfig</code></td><td>RAG 配置</td><td><code>chunk_size</code>, <code>retrieval_top_k</code></td></tr>
+    <tr><td><code>AgentsConfig</code></td><td>Agent 配置</td><td><code>max_concurrent</code>, <code>default_strategy</code></td></tr>
+  </table>
+
+  <h3 class="section-subtitle">加载流程</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from pathlib import Path
+from src.core.config import load_config, get_settings
+
+# 加载：读 YAML → 替换环境变量 → Pydantic 验证 → 全局单例
+settings = load_config(Path("config.yaml"))
+
+# 访问
+settings.llm.model           # "qwen3-rerank"
+settings.rag.retrieval_top_k  # 5</code></pre>
+  </div>
+</div>
+
+<!-- ==================== LLM 模块 ==================== -->
+<div class="section" id="llm">
+  <h2 class="section-title">LLM 模块</h2>
+
+  <p>LLM 模块的职责很简单：根据配置创建 LangChain ChatModel 实例。</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python"># src/llm/langchain_llm.py
+
+def create_langchain_llm(settings: Settings) -> BaseChatModel:
+    provider = settings.llm.provider.lower()
+
+    if provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(model=settings.llm.model, ...)
+
+    elif provider == "qwen":
+        from langchain_community.chat_models.tongyi import ChatTongyi
+        return ChatTongyi(model=settings.llm.model, ...)</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">BaseChatModel 核心方法</h3>
+  <table>
+    <tr><th>方法</th><th>说明</th><th>返回值</th></tr>
+    <tr><td><code>ainvoke(messages)</code></td><td>完整调用，一次性返回</td><td><code>AIMessage</code></td></tr>
+    <tr><td><code>astream(messages)</code></td><td>流式调用，逐块返回</td><td><code>AsyncIterator[AIMessageChunk]</code></td></tr>
+    <tr><td><code>bind_tools(tools)</code></td><td>绑定工具，让 LLM 可以调用</td><td>新的 ChatModel 实例</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 工具系统 ==================== -->
+<div class="section" id="tools">
+  <h2 class="section-title">工具系统</h2>
+
+  <p>工具是 Agent 能力的最小单元。LLM 本身只能生成文本，通过工具它可以：读写文件、执行代码、访问网络、搜索知识库。</p>
+
+  <h3 class="section-subtitle">注册机制</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from src.tools.registry import ToolRegistry
+
+registry = ToolRegistry()
+
+@registry.register(
+    name="read_file",
+    description="Read the contents of a file",
+    parameters={
+        "type": "object",
+        "properties": {"path": {"type": "string"}},
+        "required": ["path"]
+    },
+)
+async def read_file(path: str) -> str:
+    with open(path) as f:
+        return f.read()</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">工具转换桥</h3>
+  <p>注册表中的工具需要转换为 LangChain 格式才能被 Agent 使用：</p>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from src.tools.langchain_tools import convert_to_langchain_tools
+
+lc_tools = convert_to_langchain_tools(registry)
+# → [StructuredTool("read_file"), StructuredTool("write_file"), ...]</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">10 个内置工具</h3>
+  <table>
+    <tr><th>分组</th><th>工具</th><th>说明</th></tr>
+    <tr><td rowspan="3">文件操作</td><td><code>read_file</code></td><td>读取文件文本内容</td></tr>
+    <tr><td><code>write_file</code></td><td>写入文件（自动创建目录）</td></tr>
+    <tr><td><code>search_files</code></td><td>glob 模式搜索文件</td></tr>
+    <tr><td rowspan="3">数据处理</td><td><code>parse_json</code></td><td>解析 JSON 字符串</td></tr>
+    <tr><td><code>csv_to_dict</code></td><td>CSV → 字典列表</td></tr>
+    <tr><td><code>json_to_csv</code></td><td>字典列表 → CSV</td></tr>
+    <tr><td>代码执行</td><td><code>run_python</code></td><td>沙箱中执行 Python</td></tr>
+    <tr><td>网络请求</td><td><code>fetch_url</code></td><td>HTTP 请求</td></tr>
+    <tr><td rowspan="2">RAG</td><td><code>search_knowledge</code></td><td>知识库语义搜索</td></tr>
+    <tr><td><code>index_document</code></td><td>文档索引到知识库</td></tr>
+  </table>
+</div>
+
+<!-- ==================== Agent 系统 ==================== -->
+<div class="section" id="agents">
+  <h2 class="section-title">Agent 系统</h2>
+
+  <p>这是系统的核心——三个 Agent 分工协作完成任务。</p>
+
+  <h3 class="section-subtitle">状态定义</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">class MultiAgentState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]  # 对话历史（自动追加）
+    task: str                       # 用户任务
+    plan: str                       # Planner 的计划
+    execution_result: str           # Executor 的结果
+    review_status: str              # "pending" / "approved" / "rejected"
+    iterations: int                 # 修订轮次</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">三个节点</h3>
+  <div class="card">
+    <div class="card-title">📋 Planner 节点</div>
+    <p>调用 LLM 分析任务，生成执行计划。输入用户的原始任务，输出分步计划。</p>
+  </div>
+  <div class="card">
+    <div class="card-title">⚡ Executor 节点</div>
+    <p>根据计划执行任务。可以调用工具（<code>llm.bind_tools(tools)</code>），获取工具结果后生成最终答案。如果被 Critic 拒绝，会收到修订指令。</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🔍 Critic 节点</div>
+    <p>审查执行结果质量。回复 <code>APPROVED</code>（通过）或 <code>REJECTED</code>（不通过 + 原因）。</p>
+  </div>
+
+  <h3 class="section-subtitle">条件路由</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">def should_continue(state):
+    if state["review_status"] == "approved":
+        return "end"            # 通过 → 结束
+    if state["iterations"] >= 2:
+        return "end"            # 超过 2 轮 → 强制结束
+    return "executor"           # 不通过 → 重新执行</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">图构建</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">graph = StateGraph(MultiAgentState)
+
+graph.add_node("planner", planner_node)
+graph.add_node("executor", executor_node)
+graph.add_node("critic", critic_node)
+
+graph.set_entry_point("planner")
+graph.add_edge("planner", "executor")
+graph.add_edge("executor", "critic")
+graph.add_conditional_edges("critic", should_continue, {
+    "end": END,
+    "executor": "executor",
+})
+
+compiled = graph.compile()</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">完整流程</h3>
+  <div class="arch-diagram"><pre>
+用户输入: "分析这段代码的性能问题"
+         │
+         ▼
+    ┌─────────┐
+    │ Planner │  LLM 分析任务，生成 3 步计划
+    └────┬────┘
+         │
+         ▼
+    ┌─────────┐
+    │ Executor│  调用 read_file 读取代码
+    │         │  调用 run_python 执行分析
+    │         │  生成分析报告
+    └────┬────┘
+         │
+         ▼
+    ┌─────────┐
+    │ Critic  │  审查报告质量
+    └────┬────┘
+         │
+    ┌────┴────┐
+    │         │
+ APPROVED  REJECTED
+    │         │
+    ▼         ▼
+  返回结果   回到 Executor 修订</pre>
+  </div>
+
+  <h3 class="section-subtitle">ReAct Agent（单 Agent 模式）</h3>
+  <p>适合简单任务，LLM 自行决定何时调用工具：</p>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from src.agents.langgraph_react import create_react_agent_graph
+
+graph = create_react_agent_graph(llm, tools)
+result = await graph.ainvoke({
+    "messages": [HumanMessage(content="帮我读取 config.yaml")]
+})</code></pre>
+  </div>
+
+  <div class="callout warning">
+    <span class="callout-icon">⚠️</span>
+    <div><strong>如何选择</strong>：简单问答 + 工具调用用 ReAct Agent；需要任务分解 + 质量审查用多 Agent 协作图。</div>
+  </div>
+</div>
+
+<!-- ==================== Web 服务 ==================== -->
+<div class="section" id="api">
+  <h2 class="section-title">Web 服务</h2>
+
+  <h3 class="section-subtitle">FastAPI 应用</h3>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>GET</td><td><code>/</code></td><td>聊天页面</td></tr>
+    <tr><td>GET</td><td><code>/docs</code></td><td>本文档</td></tr>
+    <tr><td>GET</td><td><code>/health</code></td><td>健康检查</td></tr>
+    <tr><td>WebSocket</td><td><code>/ws/chat</code></td><td>聊天端点</td></tr>
+  </table>
+
+  <h3 class="section-subtitle">WebSocket 事件协议</h3>
+  <p>后端通过 WebSocket 向前端推送 7 种事件：</p>
+  <table>
+    <tr><th>事件类型</th><th>字段</th><th>说明</th></tr>
+    <tr><td><code>system_info</code></td><td><code>agents</code>, <code>tools</code></td><td>连接时发送</td></tr>
+    <tr><td><code>agent_status</code></td><td><code>agent</code>, <code>status</code></td><td>Agent 状态变化</td></tr>
+    <tr><td><code>tool_call</code></td><td><code>tool</code>, <code>args</code></td><td>工具调用开始</td></tr>
+    <tr><td><code>tool_result</code></td><td><code>tool</code>, <code>success</code></td><td>工具调用结束</td></tr>
+    <tr><td><code>chunk</code></td><td><code>content</code></td><td>LLM 流式文本</td></tr>
+    <tr><td><code>done</code></td><td><code>content</code></td><td>响应完成</td></tr>
+    <tr><td><code>error</code></td><td><code>content</code></td><td>错误信息</td></tr>
+  </table>
+</div>
+
+<!-- ==================== RAG ==================== -->
+<div class="section" id="rag">
+  <h2 class="section-title">RAG 模块</h2>
+
+  <p>RAG（Retrieval-Augmented Generation）= 检索增强生成。让 LLM 在回答时参考外部知识库。</p>
+
+  <h3 class="section-subtitle">流程</h3>
+  <div class="arch-diagram"><pre>
+文档入库：文档 → 分块(chunker) → 向量化(embedder) → 存储(vector_store)
+
+查询检索：问题 → 向量化 → 相似度搜索 → 返回相关文档块 → 注入 LLM 上下文</pre>
+  </div>
+
+  <h3 class="section-subtitle">核心组件</h3>
+  <table>
+    <tr><th>组件</th><th>文件</th><th>职责</th></tr>
+    <tr><td><code>TextChunker</code></td><td><code>chunker.py</code></td><td>文档分块（默认 512 字符，重叠 64）</td></tr>
+    <tr><td><code>Embedder</code></td><td><code>embedder.py</code></td><td>文本向量化</td></tr>
+    <tr><td><code>VectorStore</code></td><td><code>vector_store.py</code></td><td>向量存储抽象接口</td></tr>
+    <tr><td><code>RetrievalPipeline</code></td><td><code>retrieval.py</code></td><td>完整检索管线</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 异常体系 ==================== -->
+<div class="section" id="exceptions">
+  <h2 class="section-title">异常体系</h2>
+
+  <p>所有自定义异常继承自 <code>MultiAgentError</code>，提供统一的错误码和上下文机制。</p>
+
+  <div class="arch-diagram"><pre>
+MultiAgentError (基类)
+├── AgentError      Agent 运行错误（agent_id）
+├── ToolError       工具执行错误（tool_name）
+├── SkillError      技能执行错误（skill_name）
+├── RAGError        RAG 检索错误
+├── MCPError        MCP 协议错误（server_name）
+└── ConfigError     配置加载错误</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python"># 使用示例
+from src.core.exceptions import AgentError, MultiAgentError
+
+# 抛出
+raise AgentError("LLM 调用失败", agent_id="executor-1", code="LLM_TIMEOUT")
+
+# 统一捕获
+try:
+    await graph.ainvoke(input_state)
+except MultiAgentError as e:
+    logger.error(f"[{e.code}] {e}", extra=e.context)</code></pre>
+  </div>
+</div>
+
+<!-- ==================== 日志系统 ==================== -->
+<div class="section" id="logging">
+  <h2 class="section-title">日志系统</h2>
+
+  <p>支持两种格式：开发环境用人类可读格式，生产环境用 JSON 结构化格式。</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="lang">python</span></div>
+    <pre><code class="language-python">from src.core.logging import setup_logging, get_logger
+
+# 初始化（启动时调用一次）
+setup_logging(level="INFO", json_format=False)
+
+# 获取日志器
+logger = get_logger("agents.multi")
+logger.info("Graph compiled")</code></pre>
+  </div>
+
+  <h3 class="section-subtitle">日志命名空间</h3>
+  <div class="arch-diagram"><pre>
+multi_agent（根）
+├── multi_agent.core              核心模块
+├── multi_agent.llm.langchain     LangChain LLM
+├── multi_agent.tools.langchain   工具转换
+├── multi_agent.agents.multi      多 Agent 图
+├── multi_agent.agents.react      ReAct Agent
+├── multi_agent.api.server        Web 服务
+└── multi_agent.api.chat          聊天处理</pre>
+  </div>
+</div>
+
+<!-- ==================== 项目结构 ==================== -->
+<div class="section" id="project-structure">
+  <h2 class="section-title">项目结构</h2>
+
+  <div class="arch-diagram"><pre>
+multi_agent_system/
+├── config.yaml                    # 系统配置
+├── pyproject.toml                 # 依赖管理
+├── src/
+│   ├── main.py                    # 入口（6 步启动流程）
+│   ├── core/                      # 核心模块
+│   │   ├── config.py              # 配置加载
+│   │   ├── logging.py             # 日志系统
+│   │   └── exceptions.py          # 异常层级
+│   ├── llm/
+│   │   └── langchain_llm.py       # LangChain LLM 工厂
+│   ├── agents/
+│   │   ├── langgraph_multi.py     # 多 Agent 协作图
+│   │   └── langgraph_react.py     # ReAct 单 Agent
+│   ├── tools/
+│   │   ├── registry.py            # 工具注册表
+│   │   ├── langchain_tools.py     # LangChain 工具转换
+│   │   └── builtin/               # 10 个内置工具
+│   ├── api/
+│   │   ├── server.py              # FastAPI 应用
+│   │   ├── chat.py                # WebSocket 聊天
+│   │   └── static/
+│   │       ├── index.html         # 聊天前端
+│   │       └── docs.html          # 本文档
+│   ├── rag/                       # RAG 模块
+│   └── mcp/                       # MCP 协议
+└── tests/</pre>
+  </div>
+</div>
+
+<!-- ==================== 常见问题 ==================== -->
+<div class="section" id="faq">
+  <h2 class="section-title">常见问题</h2>
+
+  <div class="card">
+    <div class="card-title">Q: 如何切换 LLM 提供商？</div>
+    <p>修改 <code>config.yaml</code> 中的 <code>llm.provider</code>（<code>anthropic</code> 或 <code>qwen</code>）和 <code>llm.model</code>，并设置对应的环境变量。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Q: 如何添加自定义工具？</div>
+    <p>在 <code>src/tools/builtin/</code> 下创建新模块，用 <code>@registry.register(...)</code> 装饰器注册，然后在 <code>__init__.py</code> 中调用。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Q: 如何修改 Agent 行为？</div>
+    <p>编辑 <code>src/agents/langgraph_multi.py</code> 中的节点函数的 <code>SystemMessage</code> 内容。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Q: 如何添加新的 Agent 节点？</div>
+    <p>在 <code>MultiAgentState</code> 中添加新字段 → 定义新的节点函数 → <code>graph.add_node(...)</code> → 添加边连接。</p>
+  </div>
+</div>
+
+</main>
+
+<script>
+hljs.highlightAll();
+
+function setActive(el) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// Scroll spy
+const sections = document.querySelectorAll('.section');
+const items = document.querySelectorAll('.sidebar-item');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  items.forEach(i => {
+    i.classList.remove('active');
+    if (i.getAttribute('href') === '#' + current) i.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

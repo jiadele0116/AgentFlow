@@ -1,41 +1,41 @@
-# Phase 2: Capabilities Implementation Plan
+# 第二阶段：能力层实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **致智能体工作者：** 必须使用子技能：superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实施本计划。步骤使用复选框（`- [ ]`）语法进行追踪。
 
-**Goal:** Build the Tools (registry, engine, sandbox, built-in tools) and RAG (processor, chunker, embedder, ChromaDB, retrieval) modules — the capabilities that agents will consume.
+**目标：** 构建 Tools（注册表、引擎、沙箱、内置工具）和 RAG（处理器、分块器、嵌入器、ChromaDB、检索）模块——智能体将使用的能力。
 
-**Architecture:** Tools provides a registry + execution engine for callable operations. RAG provides document ingestion, embedding, storage, and hybrid retrieval. Both depend only on Core and LLM from Phase 1.
+**架构：** Tools 提供注册表 + 执行引擎用于可调用操作。RAG 提供文档摄入、嵌入、存储和混合检索。两者仅依赖第一阶段的 Core 和 LLM。
 
-**Tech Stack:** Python 3.11+, ChromaDB, sentence-transformers, rank-bm25, RestrictedPython, pypdf, python-docx, beautifulsoup4, httpx
+**技术栈：** Python 3.11+、ChromaDB、sentence-transformers、rank-bm25、RestrictedPython、pypdf、python-docx、beautifulsoup4、httpx
 
 ---
 
-## File Structure
+## 文件结构
 
 ```
 src/tools/
 ├── __init__.py
-├── registry.py          # Tool registration decorator and ToolRegistry
-├── engine.py            # ToolEngine with validation, timeout, retry, audit
-├── sandbox.py           # RestrictedPython sandbox for code execution
+├── registry.py          # 工具注册装饰器和 ToolRegistry
+├── engine.py            # 带验证、超时、重试、审计的 ToolEngine
+├── sandbox.py           # 用于代码执行的 RestrictedPython 沙箱
 └── builtin/
-    ├── __init__.py      # Auto-registers all built-in tools
-    ├── file_ops.py      # read_file, write_file, search_files
-    ├── code_exec.py     # run_python, run_shell, lint_code
-    ├── network.py       # fetch_url, search_web
-    ├── data_ops.py      # parse_json, csv_to_dict, json_to_csv
-    └── rag_ops.py       # search_knowledge, index_document
+    ├── __init__.py      # 自动注册所有内置工具
+    ├── file_ops.py      # read_file、write_file、search_files
+    ├── code_exec.py     # run_python、run_shell、lint_code
+    ├── network.py       # fetch_url、search_web
+    ├── data_ops.py      # parse_json、csv_to_dict、json_to_csv
+    └── rag_ops.py       # search_knowledge、index_document
 
 src/rag/
 ├── __init__.py
-├── processor.py         # DocumentProcessor orchestrator
-├── chunker.py           # Chunking strategies (recursive, fixed_size, etc.)
-├── embedder.py          # sentence-transformers wrapper for bge-m3
+├── processor.py         # DocumentProcessor 编排器
+├── chunker.py           # 分块策略（recursive、fixed_size 等）
+├── embedder.py          # 用于 bge-m3 的 sentence-transformers 封装
 ├── vector_store.py      # VectorStore ABC
 ├── stores/
-│   └── chroma_store.py  # ChromaDB implementation
-├── retrieval.py         # Hybrid retrieval with RRF fusion
-└── query_rewrite.py     # LLM-based query rewriting
+│   └── chroma_store.py  # ChromaDB 实现
+├── retrieval.py         # 带 RRF 融合的混合检索
+└── query_rewrite.py     # 基于 LLM 的查询改写
 
 tests/
 ├── test_tools/
@@ -58,15 +58,15 @@ tests/
 
 ---
 
-## Task 1: Tool Registry
+## 任务 1：工具注册表
 
-**Files:**
-- Create: `src/tools/__init__.py`
-- Create: `src/tools/registry.py`
-- Create: `tests/test_tools/__init__.py`
-- Create: `tests/test_tools/test_registry.py`
+**文件：**
+- 创建：`src/tools/__init__.py`
+- 创建：`src/tools/registry.py`
+- 创建：`tests/test_tools/__init__.py`
+- 创建：`tests/test_tools/test_registry.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_registry.py
@@ -154,12 +154,12 @@ def test_registry_multiple_tools():
     assert len(registry.list_tools()) == 2
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_registry.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_registry.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement registry**
+- [ ] **步骤 3：实现注册表**
 
 ```python
 # src/tools/__init__.py
@@ -183,7 +183,7 @@ class Tool:
 
 
 class ToolRegistry:
-    """Central registry for all tools."""
+    """所有工具的中央注册表。"""
 
     def __init__(self):
         self._tools: dict[str, Tool] = {}
@@ -197,7 +197,7 @@ class ToolRegistry:
         retry: int = 0,
         requires_confirmation: bool = False,
     ):
-        """Decorator to register an async function as a tool."""
+        """将异步函数注册为工具的装饰器。"""
         def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
             tool = Tool(
                 name=name,
@@ -213,15 +213,15 @@ class ToolRegistry:
         return decorator
 
     def get(self, name: str) -> Tool | None:
-        """Get a tool by name."""
+        """按名称获取工具。"""
         return self._tools.get(name)
 
     def list_names(self) -> list[str]:
-        """List all registered tool names."""
+        """列出所有已注册的工具名称。"""
         return list(self._tools.keys())
 
     def list_tools(self) -> list[dict[str, Any]]:
-        """List all tools as JSON Schema descriptions for LLM consumption."""
+        """将所有工具以 JSON Schema 描述列出，供 LLM 使用。"""
         return [
             {
                 "name": tool.name,
@@ -232,16 +232,16 @@ class ToolRegistry:
         ]
 
     def unregister(self, name: str):
-        """Remove a tool from the registry."""
+        """从注册表中移除工具。"""
         self._tools.pop(name, None)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_registry.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_tools/test_registry.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/tools/__init__.py src/tools/registry.py tests/test_tools/__init__.py tests/test_tools/test_registry.py
@@ -250,13 +250,13 @@ git commit -m "feat: ToolRegistry with decorator-based registration and JSON Sch
 
 ---
 
-## Task 2: Tool Execution Engine
+## 任务 2：工具执行引擎
 
-**Files:**
-- Create: `src/tools/engine.py`
-- Create: `tests/test_tools/test_engine.py`
+**文件：**
+- 创建：`src/tools/engine.py`
+- 创建：`tests/test_tools/test_engine.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_engine.py
@@ -367,12 +367,12 @@ async def test_engine_list_tools():
     assert tools[0]["name"] == "a"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_engine.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_engine.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement engine**
+- [ ] **步骤 3：实现引擎**
 
 ```python
 # src/tools/engine.py
@@ -393,13 +393,13 @@ class ToolResult:
 
 
 class ToolEngine:
-    """Executes tools with validation, timeout, retry, and audit logging."""
+    """执行工具，支持验证、超时、重试和审计日志。"""
 
     def __init__(self, registry: ToolRegistry):
         self._registry = registry
 
     async def execute(self, name: str, params: dict[str, Any]) -> ToolResult:
-        """Execute a tool by name with the given parameters."""
+        """按名称使用给定参数执行工具。"""
         tool = self._registry.get(name)
         if tool is None:
             return ToolResult(success=False, error=f"Tool '{name}' not found")
@@ -434,16 +434,16 @@ class ToolEngine:
         return ToolResult(success=False, error=last_error, duration_ms=duration)
 
     def list_tools(self) -> list[dict[str, Any]]:
-        """List all registered tools as JSON Schema descriptions."""
+        """将所有已注册工具以 JSON Schema 描述列出。"""
         return self._registry.list_tools()
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_engine.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_tools/test_engine.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/tools/engine.py tests/test_tools/test_engine.py
@@ -452,15 +452,15 @@ git commit -m "feat: ToolEngine with timeout, retry, and result formatting"
 
 ---
 
-## Task 3: Built-in File Tools
+## 任务 3：内置文件工具
 
-**Files:**
-- Create: `src/tools/builtin/__init__.py`
-- Create: `src/tools/builtin/file_ops.py`
-- Create: `tests/test_tools/test_builtin/__init__.py`
-- Create: `tests/test_tools/test_builtin/test_file_ops.py`
+**文件：**
+- 创建：`src/tools/builtin/__init__.py`
+- 创建：`src/tools/builtin/file_ops.py`
+- 创建：`tests/test_tools/test_builtin/__init__.py`
+- 创建：`tests/test_tools/test_builtin/test_file_ops.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_builtin/test_file_ops.py
@@ -530,12 +530,12 @@ async def test_read_file_not_found():
         await tool.handler(path="/nonexistent/file.txt")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_builtin/test_file_ops.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_builtin/test_file_ops.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement file tools**
+- [ ] **步骤 3：实现文件工具**
 
 ```python
 # src/tools/builtin/__init__.py
@@ -544,7 +544,7 @@ from src.tools.builtin.file_ops import register_file_tools
 
 
 def register_all_builtin_tools(registry: ToolRegistry):
-    """Register all built-in tools."""
+    """注册所有内置工具。"""
     register_file_tools(registry)
 ```
 
@@ -558,7 +558,7 @@ from src.tools.registry import ToolRegistry
 
 
 def register_file_tools(registry: ToolRegistry):
-    """Register file operation tools."""
+    """注册文件操作工具。"""
 
     @registry.register(
         name="read_file",
@@ -616,12 +616,12 @@ def register_file_tools(registry: ToolRegistry):
         return sorted(results)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_builtin/test_file_ops.py -v`
-Expected: All 4 tests PASS
+运行：`pytest tests/test_tools/test_builtin/test_file_ops.py -v`
+预期：全部 4 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/tools/builtin/__init__.py src/tools/builtin/file_ops.py tests/test_tools/test_builtin/__init__.py tests/test_tools/test_builtin/test_file_ops.py
@@ -630,13 +630,13 @@ git commit -m "feat: built-in file tools (read_file, write_file, search_files)"
 
 ---
 
-## Task 4: Built-in Data Tools
+## 任务 4：内置数据工具
 
-**Files:**
-- Create: `src/tools/builtin/data_ops.py`
-- Create: `tests/test_tools/test_builtin/test_data_ops.py`
+**文件：**
+- 创建：`src/tools/builtin/data_ops.py`
+- 创建：`tests/test_tools/test_builtin/test_data_ops.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_builtin/test_data_ops.py
@@ -701,12 +701,12 @@ async def test_parse_json_invalid():
         await tool.handler(text="not json")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_builtin/test_data_ops.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_builtin/test_data_ops.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement data tools**
+- [ ] **步骤 3：实现数据工具**
 
 ```python
 # src/tools/builtin/data_ops.py
@@ -719,7 +719,7 @@ from src.tools.registry import ToolRegistry
 
 
 def register_data_tools(registry: ToolRegistry):
-    """Register data processing tools."""
+    """注册数据处理工具。"""
 
     @registry.register(
         name="parse_json",
@@ -775,12 +775,12 @@ def register_data_tools(registry: ToolRegistry):
         return output.getvalue()
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_builtin/test_data_ops.py -v`
-Expected: All 4 tests PASS
+运行：`pytest tests/test_tools/test_builtin/test_data_ops.py -v`
+预期：全部 4 个测试通过
 
-- [ ] **Step 5: Update builtin/__init__.py**
+- [ ] **步骤 5：更新 builtin/__init__.py**
 
 ```python
 # src/tools/builtin/__init__.py
@@ -790,12 +790,12 @@ from src.tools.builtin.data_ops import register_data_tools
 
 
 def register_all_builtin_tools(registry: ToolRegistry):
-    """Register all built-in tools."""
+    """注册所有内置工具。"""
     register_file_tools(registry)
     register_data_tools(registry)
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add src/tools/builtin/data_ops.py src/tools/builtin/__init__.py tests/test_tools/test_builtin/test_data_ops.py
@@ -804,14 +804,14 @@ git commit -m "feat: built-in data tools (parse_json, csv_to_dict, json_to_csv)"
 
 ---
 
-## Task 5: Code Execution Sandbox
+## 任务 5：代码执行沙箱
 
-**Files:**
-- Create: `src/tools/builtin/code_exec.py`
-- Create: `src/tools/sandbox.py`
-- Create: `tests/test_tools/test_builtin/test_code_exec.py`
+**文件：**
+- 创建：`src/tools/builtin/code_exec.py`
+- 创建：`src/tools/sandbox.py`
+- 创建：`tests/test_tools/test_builtin/test_code_exec.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_builtin/test_code_exec.py
@@ -860,12 +860,12 @@ async def test_run_python_syntax_error():
     assert "SyntaxError" in result.error or "syntax" in result.error.lower()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_builtin/test_code_exec.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_builtin/test_code_exec.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement sandbox and code tools**
+- [ ] **步骤 3：实现沙箱和代码工具**
 
 ```python
 # src/tools/sandbox.py
@@ -885,7 +885,7 @@ class ExecutionResult:
     return_value: Any = None
 
 
-# Dangerous modules/functions to block
+# 需要阻止的危险模块/函数
 BLOCKED_NAMES = {
     "os.system", "subprocess", "subprocess.call", "subprocess.run",
     "subprocess.Popen", "shutil.rmtree", "shutil.move",
@@ -895,11 +895,11 @@ BLOCKED_IMPORTS = {"subprocess", "shutil", "ctypes", "importlib"}
 
 
 def _check_code_safety(code: str) -> str | None:
-    """Check if code is safe to execute. Returns error message or None."""
+    """检查代码是否安全可执行。返回错误消息或 None。"""
     try:
         tree = ast.parse(code)
     except SyntaxError:
-        return None  # Let the actual execution handle syntax errors
+        return None  # 让实际执行处理语法错误
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -919,12 +919,12 @@ def _check_code_safety(code: str) -> str | None:
 
 
 def execute_python(code: str, timeout: int = 30) -> ExecutionResult:
-    """Execute Python code in a restricted environment."""
+    """在受限环境中执行 Python 代码。"""
     safety_error = _check_code_safety(code)
     if safety_error:
         return ExecutionResult(success=False, error=safety_error)
 
-    # Capture stdout/stderr
+    # 捕获 stdout/stderr
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     captured_out = io.StringIO()
@@ -934,7 +934,7 @@ def execute_python(code: str, timeout: int = 30) -> ExecutionResult:
         sys.stdout = captured_out
         sys.stderr = captured_err
 
-        # Restricted globals
+        # 受限的全局变量
         safe_globals = {
             "__builtins__": {
                 "print": print,
@@ -1000,7 +1000,7 @@ from src.tools.sandbox import execute_python, ExecutionResult
 
 
 def register_code_tools(registry: ToolRegistry, workspace_dir: str = "."):
-    """Register code execution tools."""
+    """注册代码执行工具。"""
 
     @registry.register(
         name="run_python",
@@ -1019,12 +1019,12 @@ def register_code_tools(registry: ToolRegistry, workspace_dir: str = "."):
         return execute_python(code, timeout=timeout)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_builtin/test_code_exec.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_tools/test_builtin/test_code_exec.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Update builtin/__init__.py**
+- [ ] **步骤 5：更新 builtin/__init__.py**
 
 ```python
 # src/tools/builtin/__init__.py
@@ -1035,13 +1035,13 @@ from src.tools.builtin.code_exec import register_code_tools
 
 
 def register_all_builtin_tools(registry: ToolRegistry, workspace_dir: str = "."):
-    """Register all built-in tools."""
+    """注册所有内置工具。"""
     register_file_tools(registry)
     register_data_tools(registry)
     register_code_tools(registry, workspace_dir=workspace_dir)
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add src/tools/sandbox.py src/tools/builtin/code_exec.py src/tools/builtin/__init__.py tests/test_tools/test_builtin/test_code_exec.py
@@ -1050,13 +1050,13 @@ git commit -m "feat: Python sandbox with restricted execution and built-in code 
 
 ---
 
-## Task 6: Network Tools
+## 任务 6：网络工具
 
-**Files:**
-- Create: `src/tools/builtin/network.py`
-- Create: `tests/test_tools/test_builtin/test_network.py`
+**文件：**
+- 创建：`src/tools/builtin/network.py`
+- 创建：`tests/test_tools/test_builtin/test_network.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_builtin/test_network.py
@@ -1110,12 +1110,12 @@ async def test_fetch_url_handles_error():
             await tool.handler(url="https://invalid.example")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_builtin/test_network.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_builtin/test_network.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement network tools**
+- [ ] **步骤 3：实现网络工具**
 
 ```python
 # src/tools/builtin/network.py
@@ -1126,7 +1126,7 @@ from src.tools.registry import ToolRegistry
 
 
 def register_network_tools(registry: ToolRegistry):
-    """Register network tools."""
+    """注册网络工具。"""
 
     @registry.register(
         name="fetch_url",
@@ -1163,12 +1163,12 @@ def register_network_tools(registry: ToolRegistry):
             }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_builtin/test_network.py -v`
-Expected: All 2 tests PASS
+运行：`pytest tests/test_tools/test_builtin/test_network.py -v`
+预期：全部 2 个测试通过
 
-- [ ] **Step 5: Update builtin/__init__.py**
+- [ ] **步骤 5：更新 builtin/__init__.py**
 
 ```python
 # src/tools/builtin/__init__.py
@@ -1180,14 +1180,14 @@ from src.tools.builtin.network import register_network_tools
 
 
 def register_all_builtin_tools(registry: ToolRegistry, workspace_dir: str = "."):
-    """Register all built-in tools."""
+    """注册所有内置工具。"""
     register_file_tools(registry)
     register_data_tools(registry)
     register_code_tools(registry, workspace_dir=workspace_dir)
     register_network_tools(registry)
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add src/tools/builtin/network.py src/tools/builtin/__init__.py tests/test_tools/test_builtin/test_network.py
@@ -1196,15 +1196,15 @@ git commit -m "feat: built-in network tools (fetch_url)"
 
 ---
 
-## Task 7: RAG Chunker
+## 任务 7：RAG 分块器
 
-**Files:**
-- Create: `src/rag/__init__.py`
-- Create: `src/rag/chunker.py`
-- Create: `tests/test_rag/__init__.py`
-- Create: `tests/test_rag/test_chunker.py`
+**文件：**
+- 创建：`src/rag/__init__.py`
+- 创建：`src/rag/chunker.py`
+- 创建：`tests/test_rag/__init__.py`
+- 创建：`tests/test_rag/test_chunker.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_rag/test_chunker.py
@@ -1217,7 +1217,7 @@ def test_chunk_fixed_size():
     chunker = FixedSizeChunker(chunk_size=10, overlap=2)
     chunks = chunker.chunk("a" * 25)
     assert len(chunks) > 1
-    # Each chunk should be <= 10 chars
+    # 每个块应 <= 10 个字符
     for chunk in chunks:
         assert len(chunk.text) <= 10
 
@@ -1266,12 +1266,12 @@ def test_chunk_text_shorter_than_size():
     assert chunks[0].text == "short text"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_rag/test_chunker.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_rag/test_chunker.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement chunker**
+- [ ] **步骤 3：实现分块器**
 
 ```python
 # src/rag/__init__.py
@@ -1293,16 +1293,16 @@ class Chunk:
 
 
 class Chunker(ABC):
-    """Base class for text chunking strategies."""
+    """文本分块策略的基类。"""
 
     @abstractmethod
     def chunk(self, text: str, metadata: dict[str, Any] | None = None) -> list[Chunk]:
-        """Split text into chunks."""
+        """将文本分割为块。"""
         ...
 
 
 class FixedSizeChunker(Chunker):
-    """Split text into fixed-size chunks with overlap."""
+    """将文本分割为固定大小的块，带重叠。"""
 
     def __init__(self, chunk_size: int = 512, overlap: int = 64):
         self.chunk_size = chunk_size
@@ -1336,7 +1336,7 @@ class FixedSizeChunker(Chunker):
 
 
 class RecursiveChunker(Chunker):
-    """Split text recursively by headers, then by token count."""
+    """按标题递归分割文本，再按 token 数量分割。"""
 
     def __init__(self, chunk_size: int = 512, overlap: int = 64):
         self.chunk_size = chunk_size
@@ -1348,10 +1348,10 @@ class RecursiveChunker(Chunker):
 
         meta = metadata or {}
 
-        # First split by markdown headers
+        # 首先按 Markdown 标题分割
         sections = self._split_by_headers(text)
 
-        # Then apply fixed-size chunking to each section
+        # 然后对每个部分应用固定大小分块
         chunks = []
         for section in sections:
             if len(section) <= self.chunk_size:
@@ -1363,7 +1363,7 @@ class RecursiveChunker(Chunker):
                         source=meta.get("source", ""),
                     ))
             else:
-                # Use fixed-size for large sections
+                # 对大块使用固定大小分块
                 sub_chunker = FixedSizeChunker(self.chunk_size, self.overlap)
                 sub_chunks = sub_chunker.chunk(section, meta)
                 for sc in sub_chunks:
@@ -1373,7 +1373,7 @@ class RecursiveChunker(Chunker):
         return chunks
 
     def _split_by_headers(self, text: str) -> list[str]:
-        """Split text by markdown headers (# ## ### etc)."""
+        """按 Markdown 标题（# ## ### 等）分割文本。"""
         lines = text.split("\n")
         sections = []
         current = []
@@ -1391,12 +1391,12 @@ class RecursiveChunker(Chunker):
         return sections
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_rag/test_chunker.py -v`
-Expected: All 5 tests PASS
+运行：`pytest tests/test_rag/test_chunker.py -v`
+预期：全部 5 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/rag/__init__.py src/rag/chunker.py tests/test_rag/__init__.py tests/test_rag/test_chunker.py
@@ -1405,13 +1405,13 @@ git commit -m "feat: RAG chunker with FixedSize and Recursive strategies"
 
 ---
 
-## Task 8: Embedder
+## 任务 8：嵌入器
 
-**Files:**
-- Create: `src/rag/embedder.py`
-- Create: `tests/test_rag/test_embedder.py`
+**文件：**
+- 创建：`src/rag/embedder.py`
+- 创建：`tests/test_rag/test_embedder.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_rag/test_embedder.py
@@ -1422,7 +1422,7 @@ import numpy as np
 
 @pytest.mark.asyncio
 async def test_embedder_embed_single():
-    """Embedder returns a vector for a single text."""
+    """嵌入器为单个文本返回向量。"""
     from src.rag.embedder import Embedder
 
     with patch("src.rag.embedder.SentenceTransformer") as MockModel:
@@ -1439,7 +1439,7 @@ async def test_embedder_embed_single():
 
 @pytest.mark.asyncio
 async def test_embedder_embed_batch():
-    """Embedder handles batch embedding."""
+    """嵌入器处理批量嵌入。"""
     from src.rag.embedder import Embedder
 
     with patch("src.rag.embedder.SentenceTransformer") as MockModel:
@@ -1467,12 +1467,12 @@ def test_embedder_dimension():
         assert embedder.dimension == 1024
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_rag/test_embedder.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_rag/test_embedder.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement embedder**
+- [ ] **步骤 3：实现嵌入器**
 
 ```python
 # src/rag/embedder.py
@@ -1481,7 +1481,7 @@ import numpy as np
 
 
 class Embedder:
-    """Wraps sentence-transformers for text embedding."""
+    """封装 sentence-transformers 用于文本嵌入。"""
 
     def __init__(self, model_name: str = "BAAI/bge-m3", device: str = "cpu", batch_size: int = 32):
         self._model = SentenceTransformer(model_name, device=device)
@@ -1489,28 +1489,28 @@ class Embedder:
 
     @property
     def dimension(self) -> int:
-        """Return the embedding dimension."""
+        """返回嵌入维度。"""
         return self._model.get_sentence_embedding_dimension()
 
     async def embed(self, text: str) -> list[float]:
-        """Embed a single text string."""
+        """嵌入单个文本字符串。"""
         embedding = self._model.encode([text], batch_size=1)
         return embedding[0].tolist()
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of text strings."""
+        """批量嵌入文本字符串。"""
         if not texts:
             return []
         embeddings = self._model.encode(texts, batch_size=self._batch_size, show_progress_bar=False)
         return [e.tolist() for e in embeddings]
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_rag/test_embedder.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_rag/test_embedder.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/rag/embedder.py tests/test_rag/test_embedder.py
@@ -1519,15 +1519,15 @@ git commit -m "feat: RAG embedder wrapping sentence-transformers with bge-m3"
 
 ---
 
-## Task 9: ChromaDB Vector Store
+## 任务 9：ChromaDB 向量存储
 
-**Files:**
-- Create: `src/rag/vector_store.py`
-- Create: `src/rag/stores/__init__.py`
-- Create: `src/rag/stores/chroma_store.py`
-- Create: `tests/test_rag/test_chroma_store.py`
+**文件：**
+- 创建：`src/rag/vector_store.py`
+- 创建：`src/rag/stores/__init__.py`
+- 创建：`src/rag/stores/chroma_store.py`
+- 创建：`tests/test_rag/test_chroma_store.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_rag/test_chroma_store.py
@@ -1550,7 +1550,7 @@ async def test_chroma_store_upsert_and_search(tmp_path):
 
     await store.upsert(chunks, embeddings)
 
-    # Search with a query embedding close to the first chunk
+    # 使用接近第一个块的查询嵌入进行搜索
     results = await store.search(query_embedding=[0.1, 0.2, 0.3], top_k=1)
     assert len(results) >= 1
 
@@ -1567,7 +1567,7 @@ async def test_chroma_store_delete(tmp_path):
 
     await store.upsert(chunks, embeddings)
 
-    # Get the IDs that were stored
+    # 获取存储的 ID
     results = await store.search(query_embedding=[0.1, 0.2], top_k=10)
     ids = [r.id for r in results]
 
@@ -1586,12 +1586,12 @@ async def test_chroma_store_empty_search(tmp_path):
     assert len(results) == 0
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_rag/test_chroma_store.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_rag/test_chroma_store.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement vector store ABC and ChromaDB implementation**
+- [ ] **步骤 3：实现向量存储 ABC 和 ChromaDB 实现**
 
 ```python
 # src/rag/vector_store.py
@@ -1611,11 +1611,11 @@ class SearchResult:
 
 
 class VectorStore(ABC):
-    """Abstract base for vector stores."""
+    """向量存储的抽象基类。"""
 
     @abstractmethod
     async def upsert(self, chunks: list[Chunk], embeddings: list[list[float]]) -> None:
-        """Store chunks with their embeddings."""
+        """存储块及其嵌入。"""
         ...
 
     @abstractmethod
@@ -1625,12 +1625,12 @@ class VectorStore(ABC):
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Search for similar chunks."""
+        """搜索相似块。"""
         ...
 
     @abstractmethod
     async def delete(self, ids: list[str]) -> None:
-        """Delete chunks by ID."""
+        """按 ID 删除块。"""
         ...
 ```
 
@@ -1650,7 +1650,7 @@ from src.rag.vector_store import VectorStore, SearchResult
 
 
 class ChromaVectorStore(VectorStore):
-    """ChromaDB-backed vector store."""
+    """基于 ChromaDB 的向量存储。"""
 
     def __init__(self, persist_dir: str = "./data/chroma", collection: str = "default"):
         self._client = chromadb.PersistentClient(path=persist_dir)
@@ -1660,7 +1660,7 @@ class ChromaVectorStore(VectorStore):
         )
 
     async def upsert(self, chunks: list[Chunk], embeddings: list[list[float]]) -> None:
-        """Store chunks with their embeddings."""
+        """存储块及其嵌入。"""
         if not chunks:
             return
 
@@ -1684,7 +1684,7 @@ class ChromaVectorStore(VectorStore):
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Search for similar chunks."""
+        """搜索相似块。"""
         kwargs: dict[str, Any] = {
             "query_embeddings": [query_embedding],
             "n_results": min(top_k, self._collection.count()) if self._collection.count() > 0 else 0,
@@ -1703,7 +1703,7 @@ class ChromaVectorStore(VectorStore):
                 SearchResult(
                     id=results["ids"][0][i],
                     text=results["documents"][0][i],
-                    score=1 - results["distances"][0][i],  # cosine distance to similarity
+                    score=1 - results["distances"][0][i],  # 余弦距离转相似度
                     metadata=results["metadatas"][0][i] if results["metadatas"] else {},
                 )
             )
@@ -1711,17 +1711,17 @@ class ChromaVectorStore(VectorStore):
         return search_results
 
     async def delete(self, ids: list[str]) -> None:
-        """Delete chunks by ID."""
+        """按 ID 删除块。"""
         if ids:
             self._collection.delete(ids=ids)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_rag/test_chroma_store.py -v`
-Expected: All 3 tests PASS
+运行：`pytest tests/test_rag/test_chroma_store.py -v`
+预期：全部 3 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/rag/vector_store.py src/rag/stores/__init__.py src/rag/stores/chroma_store.py tests/test_rag/test_chroma_store.py
@@ -1730,13 +1730,13 @@ git commit -m "feat: VectorStore ABC and ChromaDB implementation with upsert/sea
 
 ---
 
-## Task 10: RAG Retrieval Pipeline
+## 任务 10：RAG 检索管线
 
-**Files:**
-- Create: `src/rag/retrieval.py`
-- Create: `tests/test_rag/test_retrieval.py`
+**文件：**
+- 创建：`src/rag/retrieval.py`
+- 创建：`tests/test_rag/test_retrieval.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_rag/test_retrieval.py
@@ -1747,7 +1747,7 @@ from src.rag.vector_store import SearchResult
 
 @pytest.mark.asyncio
 async def test_retrieval_basic_search():
-    """Retrieval pipeline returns results from vector store."""
+    """检索管线从向量存储返回结果。"""
     from src.rag.retrieval import RetrievalPipeline
 
     mock_vector_store = MagicMock()
@@ -1771,7 +1771,7 @@ async def test_retrieval_basic_search():
 
 @pytest.mark.asyncio
 async def test_retrieval_with_rerank():
-    """Retrieval pipeline applies reranking when enabled."""
+    """检索管线在启用时应用重排序。"""
     from src.rag.retrieval import RetrievalPipeline
 
     mock_vector_store = MagicMock()
@@ -1799,12 +1799,12 @@ async def test_retrieval_with_rerank():
     assert results[0].text == "more relevant"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_rag/test_retrieval.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_rag/test_retrieval.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement retrieval pipeline**
+- [ ] **步骤 3：实现检索管线**
 
 ```python
 # src/rag/retrieval.py
@@ -1814,12 +1814,12 @@ from src.rag.vector_store import VectorStore, SearchResult
 
 
 class RetrievalPipeline:
-    """Hybrid retrieval with optional reranking."""
+    """带可选重排序的混合检索。"""
 
     def __init__(
         self,
         vector_store: VectorStore,
-        embedder: Any,  # Embedder instance
+        embedder: Any,  # Embedder 实例
         reranker: Any | None = None,
     ):
         self._vector_store = vector_store
@@ -1833,11 +1833,11 @@ class RetrievalPipeline:
         rerank: bool = False,
         filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Retrieve relevant chunks for a query."""
-        # Step 1: Embed the query
+        """为查询检索相关块。"""
+        # 步骤 1：嵌入查询
         query_embedding = await self._embedder.embed(query)
 
-        # Step 2: Vector search (fetch more for reranking)
+        # 步骤 2：向量搜索（为重排序获取更多结果）
         fetch_k = top_k * 2 if rerank and self._reranker else top_k
         results = await self._vector_store.search(
             query_embedding=query_embedding,
@@ -1845,19 +1845,19 @@ class RetrievalPipeline:
             filters=filters,
         )
 
-        # Step 3: Rerank if enabled
+        # 步骤 3：如果启用则重排序
         if rerank and self._reranker and results:
             results = await self._reranker.rerank(query, results)
 
         return results[:top_k]
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_rag/test_retrieval.py -v`
-Expected: All 2 tests PASS
+运行：`pytest tests/test_rag/test_retrieval.py -v`
+预期：全部 2 个测试通过
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/rag/retrieval.py tests/test_rag/test_retrieval.py
@@ -1866,13 +1866,13 @@ git commit -m "feat: RAG retrieval pipeline with vector search and optional rera
 
 ---
 
-## Task 11: RAG Tools Integration
+## 任务 11：RAG 工具集成
 
-**Files:**
-- Create: `src/tools/builtin/rag_ops.py`
-- Create: `tests/test_tools/test_builtin/test_rag_ops.py`
+**文件：**
+- 创建：`src/tools/builtin/rag_ops.py`
+- 创建：`tests/test_tools/test_builtin/test_rag_ops.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败的测试**
 
 ```python
 # tests/test_tools/test_builtin/test_rag_ops.py
@@ -1917,15 +1917,15 @@ async def test_index_document():
 
     tool = registry.get("index_document")
     result = await tool.handler(source="/path/to/doc.txt")
-    assert result == 2  # number of chunks indexed
+    assert result == 2  # 索引的块数
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tools/test_builtin/test_rag_ops.py -v`
-Expected: FAIL with "ModuleNotFoundError"
+运行：`pytest tests/test_tools/test_builtin/test_rag_ops.py -v`
+预期：失败，提示 "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement RAG tools**
+- [ ] **步骤 3：实现 RAG 工具**
 
 ```python
 # src/tools/builtin/rag_ops.py
@@ -1939,7 +1939,7 @@ def register_rag_tools(
     retrieval_pipeline: Any = None,
     document_processor: Any = None,
 ):
-    """Register RAG-powered tools."""
+    """注册 RAG 驱动的工具。"""
 
     @registry.register(
         name="search_knowledge",
@@ -1982,7 +1982,7 @@ def register_rag_tools(
         return len(chunks)
 ```
 
-- [ ] **Step 4: Update builtin/__init__.py**
+- [ ] **步骤 4：更新 builtin/__init__.py**
 
 ```python
 # src/tools/builtin/__init__.py
@@ -2000,7 +2000,7 @@ def register_all_builtin_tools(
     retrieval_pipeline=None,
     document_processor=None,
 ):
-    """Register all built-in tools."""
+    """注册所有内置工具。"""
     register_file_tools(registry)
     register_data_tools(registry)
     register_code_tools(registry, workspace_dir=workspace_dir)
@@ -2012,12 +2012,12 @@ def register_all_builtin_tools(
     )
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **步骤 5：运行测试验证通过**
 
-Run: `pytest tests/test_tools/test_builtin/test_rag_ops.py -v`
-Expected: All 2 tests PASS
+运行：`pytest tests/test_tools/test_builtin/test_rag_ops.py -v`
+预期：全部 2 个测试通过
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add src/tools/builtin/rag_ops.py src/tools/builtin/__init__.py tests/test_tools/test_builtin/test_rag_ops.py
@@ -2026,18 +2026,18 @@ git commit -m "feat: RAG tools (search_knowledge, index_document) bridging Tools
 
 ---
 
-## Verification Checklist
+## 验证清单
 
-After completing all tasks, run:
+完成所有任务后，运行：
 
 ```bash
-# All tests pass
+# 所有测试通过
 pytest tests/ -v
 
-# No import errors
+# 无导入错误
 python -c "from src.tools.registry import ToolRegistry; from src.tools.engine import ToolEngine; from src.rag.chunker import RecursiveChunker; from src.rag.vector_store import VectorStore; print('All imports OK')"
 
-# Tool registration works
+# 工具注册正常
 python -c "
 from src.tools.registry import ToolRegistry
 from src.tools.builtin import register_all_builtin_tools
