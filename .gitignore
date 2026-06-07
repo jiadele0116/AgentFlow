@@ -11,3 +11,10 @@ venv/
 .ruff_cache/
 data/chroma/
 *.db
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
