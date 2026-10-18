@@ -67,7 +67,7 @@ async def save_upload_file(file: UploadFile) -> dict:
     with open(file_path, "wb") as f:
         f.write(content)
 
-    logger.info(f"File saved: {file_path} ({size} bytes)")
+    logger.info(f"文件已保存: {file_path} ({size} 字节)")
 
     return {
         "filename": file.filename,

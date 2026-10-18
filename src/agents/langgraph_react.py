@@ -9,6 +9,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.graph.state import CompiledStateGraph
 
 from src.core.logging import get_logger
+from src.core.prompts import REACT_PROMPT
 
 logger = get_logger("agents.react")
 
@@ -29,11 +30,7 @@ def create_react_agent_graph(
         编译好的 LangGraph StateGraph，可直接调用
     """
     if system_prompt is None:
-        system_prompt = (
-            "你是一个智能助手，能够使用工具帮助用户完成各种任务。"
-            "请根据用户的问题，合理使用工具获取信息或执行操作，"
-            "然后给出清晰、准确的回答。请用中文回复。"
-        )
+        system_prompt = REACT_PROMPT
 
     graph = create_react_agent(
         model=llm,
@@ -41,5 +38,5 @@ def create_react_agent_graph(
         prompt=system_prompt,
     )
 
-    logger.info(f"Created ReAct agent with {len(tools)} tools")
+    logger.info(f"ReAct Agent 已创建，包含 {len(tools)} 个工具")
     return graph

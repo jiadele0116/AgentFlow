@@ -1,0 +1,81 @@
+name: bug_fix
+description: "接收 bug 描述，定位问题，生成修复方案"
+required_tools:
+  - search_files
+  - read_file
+  - run_python
+  - write_file
+
+input_schema:
+  type: object
+  properties:
+    bug_description:
+      type: string
+      description: "Bug 的描述信息"
+    project_dir:
+      type: string
+      description: "项目目录路径"
+      default: "."
+
+steps:
+  - id: analyze_bug
+    type: llm_reasoning
+    prompt: |
+      你是 Bug 修复专家。分析以下 Bug 描述，确定可能的问题原因和需要检查的文件类型。
+
+      Bug 描述：{{ input.bug_description }}
+
+      请分析：
+      1. 可能的根本原因
+      2. 需要搜索的关键词或文件类型
+      3. 排查步骤
+
+      输出 JSON 格式：
+      {
+        "possible_causes": ["..."],
+        "search_keywords": ["..."],
+        "file_patterns": ["*.py", "*.js", ...]
+      }
+    output: bug_analysis
+
+  - id: search_code
+    type: tool_call
+    tool: search_files
+    params:
+      directory: "{{ input.project_dir }}"
+      pattern: "*.py"
+    output: file_list
+
+  - id: read_suspect_files
+    type: llm_reasoning
+    prompt: |
+      根据 Bug 分析结果和文件列表，确定最可能包含问题的文件。
+
+      Bug 分析: {{ bug_analysis }}
+      文件列表: {{ file_list }}
+
+      列出最可能有问题的前 3 个文件路径，每行一个。
+    output: suspect_files
+
+  - id: fix_and_verify
+    type: llm_reasoning
+    prompt: |
+      你是代码修复专家。根据 Bug 分析，给出修复方案。
+
+      Bug 描述：{{ input.bug_description }}
+      Bug 分析：{{ bug_analysis }}
+      相关文件：{{ suspect_files }}
+
+      请提供：
+      1. 问题定位（具体到文件和行号）
+      2. 修复方案（包含修复后的代码片段）
+      3. 修复说明
+
+      输出格式：
+      {
+        "root_cause": "...",
+        "fix_description": "...",
+        "code_changes": [{"file": "...", "old_code": "...", "new_code": "..."}],
+        "test_suggestion": "..."
+      }
+    output: fix_result

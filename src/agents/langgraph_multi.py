@@ -17,6 +17,10 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 from src.core.logging import get_logger
+from src.core.prompts import (
+    get_planner_prompt, get_executor_prompt,
+    EXECUTOR_TOOL_RESULT_PROMPT, CRITIC_PROMPT,
+)
 
 logger = get_logger("agents.multi")
 
@@ -38,60 +42,41 @@ class MultiAgentState(TypedDict):
 
 async def planner_node(state: MultiAgentState, llm: BaseChatModel) -> dict:
     """Planner 节点：分析任务，生成执行计划。"""
-    logger.info("Planner: analyzing task")
+    logger.info("规划器: 正在分析任务")
     task = state["task"]
     context = state.get("context", "")
-    history_messages = state.get("messages", [])
 
-    system_prompt = (
-        "你是一个任务规划专家。分析用户的任务，制定清晰的执行计划。"
-        "输出格式：先简要分析任务，然后列出执行步骤。用中文回复。"
-    )
-    if context:
-        system_prompt += f"\n\n以下是相关的记忆上下文，可以帮助你更好地理解任务：\n{context}"
+    system_prompt = get_planner_prompt(context)
 
-    # 使用历史消息列表，包含对话上下文
+    # 只用当前任务，不重复注入历史（context 已包含）
     messages = [SystemMessage(content=system_prompt)]
-    messages.extend(history_messages)
-    messages.append(HumanMessage(content=f"当前任务：{task}"))
+    messages.append(HumanMessage(content=task))
 
     plan = ""
     async for chunk in llm.astream(messages):
         if chunk.content:
             plan += chunk.content
 
-    logger.info(f"Planner: plan generated ({len(plan)} chars)")
+    logger.info(f"规划器: 计划已生成 ({len(plan)} 字符)")
     return {
         "plan": plan,
-        "messages": [SystemMessage(content=f"[Planner 计划]\n{plan}")],
+        "messages": [SystemMessage(content=f"[计划]\n{plan}")],
     }
 
 
 async def executor_node(state: MultiAgentState, llm: BaseChatModel, tools: list[BaseTool]) -> dict:
     """Executor 节点：根据计划执行任务，可调用工具。"""
-    logger.info("Executor: executing task")
+    logger.info("执行器: 正在执行任务")
     task = state["task"]
     plan = state.get("plan", "")
     context = state.get("context", "")
-    history_messages = state.get("messages", [])
-    review_feedback = state.get("review_status", "")
+    is_revision = state.get("review_status") == "rejected"
 
-    # 如果有审查反馈（被拒绝），加入修订指令
-    revision_note = ""
-    if review_feedback == "rejected":
-        revision_note = "\n\n注意：上一版结果未通过审查，请改进后重新执行。"
+    system_prompt = get_executor_prompt(context, revision=is_revision)
 
-    system_prompt = (
-        "你是一个任务执行专家。根据计划执行任务，必要时使用工具获取信息。"
-        "请给出详细、准确的执行结果。用中文回复。"
-    )
-    if context:
-        system_prompt += f"\n\n相关记忆上下文：\n{context}"
-
-    # 使用历史消息列表
+    # 只发任务和计划，不重复历史
     messages = [SystemMessage(content=system_prompt)]
-    messages.extend(history_messages)
-    messages.append(HumanMessage(content=f"任务：{task}\n\n计划：{plan}{revision_note}"))
+    messages.append(HumanMessage(content=f"任务：{task}\n计划：{plan}"))
 
     # 带工具的 LLM 调用（流式）
     llm_with_tools = llm.bind_tools(tools) if tools else llm
@@ -104,13 +89,12 @@ async def executor_node(state: MultiAgentState, llm: BaseChatModel, tools: list[
             if tool_calls is None:
                 tool_calls = chunk.tool_calls
             else:
-                # 合并 tool_calls
                 for tc in chunk.tool_calls:
                     tool_calls.append(tc)
 
     # 如果 LLM 请求了工具调用，执行工具
     if tool_calls:
-        logger.info(f"Executor: {len(tool_calls)} tool calls requested")
+        logger.info(f"执行器: 请求调用 {len(tool_calls)} 个工具")
         tool_results = []
         for tc in tool_calls:
             for tool in tools:
@@ -118,17 +102,17 @@ async def executor_node(state: MultiAgentState, llm: BaseChatModel, tools: list[
                     try:
                         result = await tool.ainvoke(tc["args"])
                         tool_results.append(f"[{tc['name']}] → {result}")
-                        logger.info(f"Executor: tool {tc['name']} executed")
+                        logger.info(f"执行器: 工具 {tc['name']} 执行成功")
                     except Exception as e:
                         tool_results.append(f"[{tc['name']}] → 错误: {e}")
-                        logger.warning(f"Executor: tool {tc['name']} failed: {e}")
+                        logger.warning(f"执行器: 工具 {tc['name']} 执行失败: {e}")
                     break
 
-        # 把工具结果反馈给 LLM 生成最终答案（流式）
+        # 工具结果反馈给 LLM（精简 prompt）
         tool_context = "\n".join(tool_results)
         result = ""
         async for chunk in llm.astream([
-            SystemMessage(content="根据工具执行结果，给出最终答案。用中文回复。"),
+            SystemMessage(content=EXECUTOR_TOOL_RESULT_PROMPT),
             HumanMessage(content=f"任务：{task}\n工具结果：\n{tool_context}"),
         ]):
             if chunk.content:
@@ -136,26 +120,22 @@ async def executor_node(state: MultiAgentState, llm: BaseChatModel, tools: list[
     else:
         result = response_content
 
-    logger.info(f"Executor: result generated ({len(result)} chars)")
+    logger.info(f"执行器: 结果已生成 ({len(result)} 字符)")
     return {
         "execution_result": result,
-        "messages": [SystemMessage(content=f"[Executor 结果]\n{result}")],
+        "messages": [SystemMessage(content=f"[执行结果]\n{result}")],
     }
 
 
 async def critic_node(state: MultiAgentState, llm: BaseChatModel) -> dict:
     """Critic 节点：审查执行结果质量。"""
-    logger.info("Critic: reviewing result")
+    logger.info("审查器: 正在审查结果")
     task = state["task"]
     result = state.get("execution_result", "")
 
     messages = [
-        SystemMessage(content=(
-            "你是一个严格的质量审查员。审查任务执行结果是否准确、完整、有帮助。"
-            "如果结果合格，回复 APPROVED；如果需要改进，回复 REJECTED 并说明原因。"
-            "只回复 APPROVED 或 REJECTED + 原因。"
-        )),
-        HumanMessage(content=f"任务：{task}\n\n执行结果：{result}"),
+        SystemMessage(content=CRITIC_PROMPT),
+        HumanMessage(content=f"任务：{task}\n结果：{result}"),
     ]
 
     review = ""
@@ -166,14 +146,14 @@ async def critic_node(state: MultiAgentState, llm: BaseChatModel) -> dict:
 
     if review.upper().startswith("APPROVED"):
         status = "approved"
-        logger.info("Critic: APPROVED")
+        logger.info("审查器: 通过")
     else:
         status = "rejected"
-        logger.info(f"Critic: REJECTED - {review[:50]}")
+        logger.info(f"审查器: 拒绝 - {review[:50]}")
 
     return {
         "review_status": status,
-        "messages": [SystemMessage(content=f"[Critic 审查] {review}")],
+        "messages": [SystemMessage(content=f"[审查] {review}")],
         "iterations": state.get("iterations", 0) + 1,
     }
 
@@ -187,7 +167,7 @@ def should_continue(state: MultiAgentState) -> str:
         return "end"
     # 超过 2 轮修订 → 强制结束
     if state.get("iterations", 0) >= 2:
-        logger.info("Max iterations reached, ending")
+        logger.info("已达最大修订轮次，结束")
         return "end"
     # 未审查 → 去审查
     if state.get("review_status") == "pending":
@@ -237,5 +217,5 @@ def create_multi_agent_graph(
     })
 
     compiled = graph.compile()
-    logger.info("Multi-agent graph compiled")
+    logger.info("多Agent协作图编译完成")
     return compiled

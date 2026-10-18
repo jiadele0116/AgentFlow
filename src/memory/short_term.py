@@ -51,7 +51,7 @@ class ShortTermMemory:
         # 超出最大轮数，淘汰最早的消息
         if len(self._store[session_id]) > self._max_turns * 2:
             self._store[session_id] = self._store[session_id][-(self._max_turns * 2):]
-            logger.debug(f"Session {session_id}: trimmed to {self._max_turns * 2} messages")
+            logger.debug(f"会话 {session_id}: 已裁剪至 {self._max_turns * 2} 条消息")
 
     def get_history(self, session_id: str, last_n: int | None = None) -> list[dict[str, Any]]:
         """获取指定会话的对话历史。

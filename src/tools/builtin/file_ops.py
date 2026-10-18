@@ -19,7 +19,10 @@ def register_file_tools(registry: ToolRegistry):
 
     @registry.register(
         name="read_file", description="Read the contents of a file",
-        parameters={"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"]
+                    },
     )
     async def read_file(path: str) -> str:
         """读取指定路径的文件内容。
@@ -40,7 +43,10 @@ def register_file_tools(registry: ToolRegistry):
 
     @registry.register(
         name="write_file", description="Write content to a file",
-        parameters={"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]},
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+                    "required": ["path", "content"]
+                    },
     )
     async def write_file(path: str, content: str) -> bool:
         """写入内容到指定路径的文件。
@@ -61,7 +67,10 @@ def register_file_tools(registry: ToolRegistry):
 
     @registry.register(
         name="search_files", description="Search for files matching a glob pattern",
-        parameters={"type": "object", "properties": {"pattern": {"type": "string"}, "directory": {"type": "string"}}, "required": ["pattern", "directory"]},
+        parameters={"type": "object",
+                    "properties": {"pattern": {"type": "string"}, "directory": {"type": "string"}},
+                    "required": ["pattern", "directory"]
+                    },
     )
     async def search_files(pattern: str, directory: str) -> list[str]:
         """递归搜索匹配 glob 模式的文件。

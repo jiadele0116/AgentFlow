@@ -4,18 +4,25 @@ system:
   log_level: INFO
 
 llm:
+  # DeepSeek 使用 OpenAI 兼容协议，provider 保持 openai，
+  # 由 base_url 指向 DeepSeek 端点（见 src/llm/langchain_llm.py 的 openai 分支）
   provider: openai
-  model: qwen-plus
-  api_key: ${OPENAI_API_KEY}
-  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-  temperature: 0.7
-  max_tokens: 4096
+  model: deepseek-v4-flash
+  api_key: ${DEEPSEEK_API_KEY}
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.5
+  max_tokens: 2048
   timeout: 60
 
 embedding:
-  model: qwen3-rerank
-  device: cpu
+  # 硅基流动（SiliconFlow）的 OpenAI 兼容 embedding 接口。
+  # 注意：换模型等于换向量空间，已灌入的向量库必须重建。
+  model: BAAI/bge-m3
+  dimensions: 1024
+  device: api
   batch_size: 32
+  api_key: ${SILICONFLOW_API_KEY}
+  base_url: https://api.siliconflow.cn/v1
 
 vector_store:
   backend: chroma

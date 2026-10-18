@@ -52,9 +52,9 @@ def convert_to_langchain_tools(registry: ToolRegistry) -> list[BaseTool]:
                 return_direct=False,
             )
             tools.append(lc_tool)
-            logger.debug(f"Converted tool: {tool.name}")
+            logger.debug(f"工具已转换: {tool.name}")
         except Exception as e:
-            logger.warning(f"Failed to convert tool {tool.name}: {e}")
+            logger.warning(f"工具转换失败 {tool.name}: {e}")
 
-    logger.info(f"Converted {len(tools)} tools to LangChain format")
+    logger.info(f"已转换 {len(tools)} 个工具为 LangChain 格式")
     return tools

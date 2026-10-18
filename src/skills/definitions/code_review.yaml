@@ -1,0 +1,69 @@
+name: code_review
+description: "对代码进行审查，输出问题列表和改进建议"
+required_tools:
+  - read_file
+  - search_knowledge
+
+input_schema:
+  type: object
+  properties:
+    file_path:
+      type: string
+      description: "待审查的代码文件路径"
+    language:
+      type: string
+      description: "编程语言（如 python, javascript）"
+      default: "python"
+
+steps:
+  - id: read_code
+    type: tool_call
+    tool: read_file
+    params:
+      path: "{{ input.file_path }}"
+    output: code_content
+
+  - id: analyze
+    type: llm_reasoning
+    prompt: |
+      你是代码审查专家。请审查以下 {{ input.language }} 代码：
+
+      ```{{ input.language }}
+      {{ code_content }}
+      ```
+
+      请从以下维度审查并输出 JSON 格式的审查报告：
+      1. 代码正确性（correctness）
+      2. 性能问题（performance）
+      3. 安全隐患（security）
+      4. 可维护性（maintainability）
+
+      输出格式：
+      {
+        "issues": [{"severity": "high/medium/low", "category": "...", "description": "...", "line": "..."}],
+        "suggestions": ["..."],
+        "overall_score": 0-100
+      }
+    output: review_report
+
+  - id: search_best_practices
+    type: tool_call
+    tool: search_knowledge
+    params:
+      query: "{{ input.language }} best practices code review"
+      top_k: 3
+    output: best_practices
+
+  - id: final_report
+    type: llm_reasoning
+    prompt: |
+      结合审查报告和最佳实践参考，生成最终的代码审查意见。
+
+      审查报告: {{ review_report }}
+      最佳实践参考: {{ best_practices }}
+
+      请输出结构化的审查意见，包含：
+      1. 问题清单（按严重程度排序）
+      2. 改进建议
+      3. 总体评价
+    output: final_review

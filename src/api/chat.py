@@ -76,10 +76,9 @@ class ChatSession:
                     self.session_id, user_message
                 )
 
-            # 构造消息列表（包含历史对话）
+            # 构造消息列表（只用最近 4 条历史，减少 token 消耗）
             messages = []
-            # 加入历史对话（最近 10 条）
-            for msg in self._history[-10:]:
+            for msg in self._history[-4:]:
                 if msg["role"] == "user":
                     messages.append(HumanMessage(content=msg["content"]))
                 elif msg["role"] == "assistant":
@@ -98,6 +97,7 @@ class ChatSession:
             }
 
             # 流式调用 LangGraph
+            # 只输出 Executor 的结果给用户，Planner/Critic 的过程不输出
             full_response = ""
             current_agent = None
 
@@ -105,7 +105,7 @@ class ChatSession:
                 kind = event.get("event", "")
                 node_name = event.get("name", "")
 
-                # 节点开始
+                # 节点开始（更新侧边栏 Agent 状态）
                 if kind == "on_chain_start" and node_name in ("planner", "executor", "critic"):
                     if current_agent and current_agent != node_name:
                         await send_event(websocket, "agent_status",
@@ -114,16 +114,16 @@ class ChatSession:
                     await send_event(websocket, "agent_status",
                                      agent=node_name, status="executing")
 
-                # LLM 流式输出
-                elif kind == "on_chat_model_stream":
+                # LLM 流式输出 — 只输出 Executor 的内容给用户
+                elif kind == "on_chat_model_stream" and current_agent == "executor":
                     chunk = event.get("data", {}).get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
                         text = chunk.content
                         full_response += text
                         await send_event(websocket, "chunk", content=text)
 
-                # 工具调用开始
-                elif kind == "on_tool_start":
+                # 工具调用开始（只展示 Executor 的工具调用）
+                elif kind == "on_tool_start" and current_agent == "executor":
                     tool_name = event.get("name", "unknown")
                     tool_input = event.get("data", {}).get("input", {})
                     if isinstance(tool_input, dict):
@@ -134,7 +134,7 @@ class ChatSession:
                                      tool=tool_name, args=serializable_input)
 
                 # 工具调用结束
-                elif kind == "on_tool_end":
+                elif kind == "on_tool_end" and current_agent == "executor":
                     tool_name = event.get("name", "unknown")
                     await send_event(websocket, "tool_result",
                                      tool=tool_name, success=True)
@@ -144,20 +144,24 @@ class ChatSession:
                 await send_event(websocket, "agent_status",
                                  agent=current_agent, status="completed")
 
-            # 如果流式没有获取到内容，从最终状态提取
+            # 如果流式没有获取到内容，从最终状态提取 Executor 的结果
             if not full_response:
                 try:
                     final_state = await self._graph.ainvoke(input_state)
-                    messages = final_state.get("messages", [])
-                    for msg in reversed(messages):
-                        if isinstance(msg, AIMessage) and msg.content:
-                            full_response = msg.content
-                            break
+                    # 优先取 execution_result（Executor 的输出）
+                    full_response = final_state.get("execution_result", "")
+                    # 兜底：从消息里找最后一条 AI 消息
                     if not full_response:
-                        full_response = final_state.get("execution_result", "处理完成")
+                        messages = final_state.get("messages", [])
+                        for msg in reversed(messages):
+                            if isinstance(msg, AIMessage) and msg.content:
+                                full_response = msg.content
+                                break
+                    if not full_response:
+                        full_response = "处理完成"
                     await send_event(websocket, "chunk", content=full_response)
                 except Exception as e:
-                    logger.error(f"Fallback error: {e}")
+                    logger.error(f"备用方案执行失败: {e}")
                     full_response = "抱歉，处理过程中出现错误。"
                     await send_event(websocket, "chunk", content=full_response)
 
@@ -170,7 +174,7 @@ class ChatSession:
             await send_event(websocket, "done", content=full_response)
 
         except Exception as e:
-            logger.error(f"Chat error: {e}", exc_info=True)
+            logger.error(f"聊天处理出错: {e}", exc_info=True)
             await send_event(websocket, "error", content=str(e))
 
 
@@ -202,7 +206,7 @@ async def handle_websocket_chat(websocket: WebSocket, chat_manager: ChatManager)
     """WebSocket 聊天端点处理函数。"""
     await websocket.accept()
     session = chat_manager.create_session()
-    logger.info(f"Chat session created: {session.session_id}")
+    logger.info(f"聊天会话已创建: {session.session_id}")
 
     # 发送系统信息
     await send_event(websocket, "system_info",
@@ -217,11 +221,11 @@ async def handle_websocket_chat(websocket: WebSocket, chat_manager: ChatManager)
             files = data.get("files", [])
             if not message and not files:
                 continue
-            logger.info(f"[{session.session_id}] User: {message[:50]}... (files: {len(files)})")
+            logger.info(f"[{session.session_id}] 用户消息: {message[:50]}... (文件: {len(files)} 个)")
             await session.handle_message(websocket, message, files=files)
     except Exception as e:
         if "disconnect" not in str(e).lower() and "1000" not in str(e):
-            logger.info(f"Session {session.session_id} disconnected: {e}")
+            logger.info(f"会话 {session.session_id} 已断开连接: {e}")
     finally:
         chat_manager.remove_session(session.session_id)
-        logger.info(f"Session {session.session_id} cleaned up")
+        logger.info(f"会话 {session.session_id} 已清理")

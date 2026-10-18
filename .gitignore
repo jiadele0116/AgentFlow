@@ -10,7 +10,9 @@ venv/
 .pytest_cache/
 .ruff_cache/
 data/chroma/
+data/workspace/
 *.db
+580f5c178d62a4bae415891bf5c6e351.jpg
 
 # IDE
 .idea/

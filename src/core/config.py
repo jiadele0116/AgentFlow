@@ -41,19 +41,20 @@ class SystemConfig(BaseModel):
 class LLMConfig(BaseModel):
     """大语言模型 (LLM) 配置：定义与 LLM API 交互的参数。
 
-    当前支持 Anthropic Claude 作为默认提供商。通过 api_key 字段
-    或环境变量 ANTHROPIC_API_KEY 进行身份验证。
+    支持的提供商见 src/llm/langchain_llm.py：anthropic / openai / qwen。
+    其中 DeepSeek 等 OpenAI 兼容服务统一走 provider="openai"，通过
+    base_url 指向对应端点即可，无需新增分支。
 
     Attributes:
-        provider: LLM 提供商标识符（当前支持 "anthropic"）
-        model: 模型ID，如 "claude-sonnet-4-20250514"
-        api_key: API 密钥，支持 ${ANTHROPIC_API_KEY} 环境变量替换
+        provider: LLM 提供商标识符（"anthropic" / "openai" / "qwen"）
+        model: 模型ID，如 "deepseek-v4-flash"
+        api_key: API 密钥，支持 ${DEEPSEEK_API_KEY} 环境变量替换
         temperature: 生成温度 (0.0-1.0)，越高越随机/创造性
         max_tokens: 单次生成的最大 token 数
         timeout: API 请求超时时间（秒）
     """
     provider: str = "openai"
-    model: str = "qwen3.7-plus"
+    model: str = "deepseek-v4-flash"
     api_key: str = ""
     base_url: str = ""
     temperature: float = 0.7
@@ -64,17 +65,26 @@ class LLMConfig(BaseModel):
 class EmbeddingConfig(BaseModel):
     """文本嵌入模型配置：用于将文本转换为向量表示。
 
-    默认使用 BAAI/bge-m3 模型，这是一个多语言嵌入模型，
-    支持中英文等多种语言的语义相似度计算。
+    支持两种模式：
+      - device="api": 调用 OpenAI 兼容的 /embeddings 接口，由 base_url 指定服务商
+        （如硅基流动 SiliconFlow、阿里云 DashScope），无需本地 GPU
+      - device="cpu"/"cuda": 本地加载 sentence-transformers 模型（如 BAAI/bge-m3）
 
     Attributes:
-        model: 嵌入模型名称（HuggingFace 模型ID）
-        device: 计算设备 ("cpu" 或 "cuda")
-        batch_size: 批量编码时的批次大小，影响内存使用和速度
+        model: 模型名称（API 模型ID 或 HuggingFace 模型ID）
+        dimensions: 输出向量维度。仅 API 模式生效，且必须与服务商实际输出维度一致；
+            本地模式该值会被模型的真实维度覆盖（见 src/rag/embedder.py）
+        device: 计算设备 ("api" / "cpu" / "cuda")
+        batch_size: 批量编码时的批次大小
+        api_key: API 密钥（仅 API 模式），支持 ${ENV_VAR} 环境变量替换
+        base_url: API 基础 URL（仅 API 模式），不含末尾的 /embeddings
     """
-    model: str = "qwen3-rerank"
-    device: str = "cpu"
+    model: str = "text-embedding-v3"
+    dimensions: int = 1024
+    device: str = "api"
     batch_size: int = 32
+    api_key: str = ""
+    base_url: str = ""
 
 
 class VectorStoreConfig(BaseModel):

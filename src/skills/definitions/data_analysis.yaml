@@ -1,0 +1,80 @@
+name: data_analysis
+description: "对数据集进行探索性分析，生成分析报告"
+required_tools:
+  - read_file
+  - run_python
+  - write_file
+
+input_schema:
+  type: object
+  properties:
+    data_source:
+      type: string
+      description: "数据文件路径（CSV/JSON）"
+    analysis_goal:
+      type: string
+      description: "分析目标（可选）"
+      default: "进行探索性数据分析"
+    output_path:
+      type: string
+      description: "报告输出路径"
+      default: "analysis_report.md"
+
+steps:
+  - id: read_data
+    type: tool_call
+    tool: read_file
+    params:
+      path: "{{ input.data_source }}"
+    output: raw_data
+
+  - id: explore_data
+    type: llm_reasoning
+    prompt: |
+      你是数据分析师。以下是原始数据：
+
+      {{ raw_data }}
+
+      分析目标：{{ input.analysis_goal }}
+
+      请编写 Python 代码来探索性分析这些数据，代码应该：
+      1. 读取数据并显示基本信息（行数、列数、数据类型）
+      2. 统计描述（均值、中位数、标准差等）
+      3. 缺失值分析
+      4. 数据分布概览
+
+      直接输出可执行的 Python 代码，不要其他文字。
+    output: explore_code
+
+  - id: run_explore
+    type: tool_call
+    tool: run_python
+    params:
+      code: "{{ explore_code }}"
+    output: explore_result
+
+  - id: generate_report
+    type: llm_reasoning
+    prompt: |
+      根据数据分析结果，生成一份 Markdown 格式的分析报告。
+
+      原始数据预览：{{ raw_data }}
+      分析结果：{{ explore_result }}
+      分析目标：{{ input.analysis_goal }}
+
+      报告应包含：
+      1. 数据概览
+      2. 关键发现
+      3. 数据质量评估
+      4. 建议和下一步行动
+
+      直接输出 Markdown 格式的报告内容。
+    output: report_content
+
+  - id: save_report
+    type: tool_call
+    tool: write_file
+    params:
+      path: "{{ input.output_path }}"
+      content: "{{ report_content }}"
+    output: save_result

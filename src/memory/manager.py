@@ -52,14 +52,9 @@ class MemoryManager:
             conversation += f"{role}: {msg['content']}\n"
 
         try:
+            from src.core.prompts import MEMORY_SUMMARIZE_PROMPT
             response = await self._llm.ainvoke([
-                SystemMessage(content=(
-                    "请用中文总结以下对话的关键信息，包括：\n"
-                    "1. 用户讨论的主要话题\n"
-                    "2. 得出的重要结论或决定\n"
-                    "3. 需要记住的关键事实\n"
-                    "用简洁的要点形式输出，不要超过 200 字。"
-                )),
+                SystemMessage(content=MEMORY_SUMMARIZE_PROMPT),
                 HumanMessage(content=conversation),
             ])
             summary = response.content.strip()
@@ -101,8 +96,8 @@ class MemoryManager:
         """
         parts = []
 
-        # 短期记忆：最近的对话历史
-        history = self.short_term.get_context_prompt(session_id, last_n=10)
+        # 短期记忆：最近的对话历史（精简为 4 条）
+        history = self.short_term.get_context_prompt(session_id, last_n=4)
         if history:
             parts.append(f"最近的对话历史：\n{history}")
 

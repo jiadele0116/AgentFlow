@@ -52,7 +52,7 @@ class LongTermMemory:
                 },
             )
             await self._vector_store.upsert([chunk], [embedding])
-            logger.info(f"Memory saved: {content[:50]}...")
+            logger.info(f"记忆已保存: {content[:50]}...")
         except Exception as e:
             logger.warning(f"保存记忆失败: {e}")
 

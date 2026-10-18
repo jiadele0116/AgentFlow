@@ -33,19 +33,23 @@ def create_langchain_llm(settings: Settings) -> BaseChatModel:
             temperature=settings.llm.temperature,
             timeout=settings.llm.timeout,
         )
-        logger.info(f"Created ChatAnthropic: {settings.llm.model}")
+        logger.info(f"ChatAnthropic 已创建: {settings.llm.model}")
         return llm
 
     elif provider == "openai":
         from langchain_openai import ChatOpenAI
+        # base_url 为空时传 None，让 SDK 回落到官方 OpenAI 端点。
+        # DeepSeek / Qwen 等兼容服务通过 config.yaml 的 base_url 指定。
         llm = ChatOpenAI(
             model=settings.llm.model,
             api_key=settings.llm.api_key,
-            base_url=getattr(settings.llm, 'base_url', None),
+            base_url=settings.llm.base_url or None,
             max_tokens=settings.llm.max_tokens,
             temperature=settings.llm.temperature,
         )
-        logger.info(f"Created ChatOpenAI: {settings.llm.model}")
+        logger.info(
+            f"ChatOpenAI 已创建: {settings.llm.model} @ {settings.llm.base_url or '默认端点'}"
+        )
         return llm
 
     elif provider == "qwen":
@@ -56,7 +60,7 @@ def create_langchain_llm(settings: Settings) -> BaseChatModel:
             max_tokens=settings.llm.max_tokens,
             temperature=settings.llm.temperature,
         )
-        logger.info(f"Created ChatTongyi: {settings.llm.model}")
+        logger.info(f"ChatTongyi 已创建: {settings.llm.model}")
         return llm
 
     else:

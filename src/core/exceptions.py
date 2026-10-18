@@ -47,7 +47,7 @@ class AgentError(MultiAgentError):
         agent_id: 产生错误的 Agent 标识符
     """
 
-def __init__(self, message: str, agent_id: str = "", **kwargs):
+    def __init__(self, message: str, agent_id: str = "", **kwargs):
         super().__init__(message, **kwargs)
         self.agent_id = agent_id
 
